@@ -3,710 +3,27 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#FACC15">
+    <meta name="description" content="لعبة عربية لتخمين الأمثال والحكم من الرموز التعبيرية - مع تحدي يومي، فئات، ووضع ليلي">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="إيموجي شاراد">
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/svg+xml" href="assets/icons/icon-192.svg">
+    <link rel="apple-touch-icon" href="assets/icons/icon-192.svg">
     <title>لعبة تمثيل الرموز التعبيرية</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        :root {
-            --bg-color: #F1F5F9;
-            --primary: #FACC15;
-            --primary-dark: #EAB308;
-            --primary-light: #FEF08A;
-            --text-dark: #1E293B;
-            --text-gray: #64748B;
-            --white: #FFFFFF;
-            --success: #22C55E;
-            --danger: #EF4444;
-            --shadow: 0 10px 40px rgba(0,0,0,0.1);
-            --shadow-lg: 0 20px 60px rgba(0,0,0,0.15);
-        }
-
-        body {
-            font-family: 'Tajawal', sans-serif;
-            background: var(--bg-color);
-            min-height: 100vh;
-            min-height: 100dvh;
-            overflow-x: hidden;
-            position: relative;
-        }
-
-        /* Background Pattern */
-        body::before {
-            content: '';
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-image: 
-                radial-gradient(circle at 20% 80%, rgba(250, 204, 21, 0.08) 0%, transparent 50%),
-                radial-gradient(circle at 80% 20%, rgba(250, 204, 21, 0.08) 0%, transparent 50%);
-            pointer-events: none;
-            z-index: 0;
-        }
-
-        .container {
-            max-width: 420px;
-            margin: 0 auto;
-            padding: 20px;
-            min-height: 100vh;
-            min-height: 100dvh;
-            display: flex;
-            flex-direction: column;
-            position: relative;
-            z-index: 1;
-        }
-
-        /* Start Screen */
-        .screen {
-            display: none;
-            flex-direction: column;
-            flex: 1;
-            animation: fadeIn 0.4s ease;
-        }
-
-        .screen.active {
-            display: flex;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        /* Logo & Title */
-        .logo-section {
-            text-align: center;
-            padding: 40px 0;
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-        }
-
-        .logo-emoji {
-            font-size: 60px;
-            margin-bottom: 20px;
-            animation: bounce 2s ease-in-out infinite;
-        }
-
-        @keyframes bounce {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-15px); }
-        }
-
-        .game-title {
-            font-size: 28px;
-            font-weight: 900;
-            color: var(--text-dark);
-            margin-bottom: 12px;
-            letter-spacing: -1px;
-        }
-
-        .game-subtitle {
-            font-size: 14px;
-            color: var(--text-gray);
-            line-height: 1.6;
-        }
-
-        /* Play Button */
-        .play-btn {
-            width: 120px;
-            height: 120px;
-            border-radius: 50%;
-            background: linear-gradient(145deg, var(--primary), var(--primary-dark));
-            border: none;
-            margin: 40px auto;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 10px 40px rgba(250, 204, 21, 0.4);
-            transition: all 0.3s ease;
-            position: relative;
-        }
-
-        .play-btn::before {
-            content: '';
-            position: absolute;
-            inset: -4px;
-            border-radius: 50%;
-            background: linear-gradient(145deg, var(--primary-light), var(--primary));
-            z-index: -1;
-            opacity: 0;
-            transition: opacity 0.3s ease;
-        }
-
-        .play-btn:hover::before {
-            opacity: 1;
-        }
-
-        .play-btn:hover {
-            transform: scale(1.05);
-        }
-
-        .play-btn:active {
-            transform: scale(0.95);
-        }
-
-        .play-btn svg {
-            width: 50px;
-            height: 50px;
-            fill: var(--text-dark);
-            margin-right: -5px;
-        }
-
-        /* Difficulty Selection */
-        .difficulty-section {
-            padding: 20px 0;
-        }
-
-        .section-title {
-            font-size: 18px;
-            font-weight: 700;
-            color: var(--text-dark);
-            margin-bottom: 16px;
-            text-align: center;
-        }
-
-        .difficulty-options {
-            display: flex;
-            gap: 12px;
-        }
-
-        .difficulty-btn {
-            flex: 1;
-            padding: 16px 12px;
-            border: 2px solid transparent;
-            border-radius: 16px;
-            background: var(--white);
-            cursor: pointer;
-            transition: all 0.3s ease;
-            text-align: center;
-        }
-
-        .difficulty-btn.selected {
-            border-color: var(--primary);
-            background: var(--primary-light);
-        }
-
-        .difficulty-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: var(--shadow);
-        }
-
-        .difficulty-btn span {
-            display: block;
-            font-size: 24px;
-            margin-bottom: 6px;
-        }
-
-        .difficulty-btn p {
-            font-size: 14px;
-            font-weight: 700;
-            color: var(--text-dark);
-        }
-
-        /* Game Screen */
-        .game-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 16px;
-            background: var(--white);
-            border-radius: 20px;
-            margin-bottom: 20px;
-            box-shadow: var(--shadow);
-        }
-
-        .stat-box {
-            text-align: center;
-        }
-
-        .stat-label {
-            font-size: 11px;
-            color: var(--text-gray);
-            margin-bottom: 4px;
-            font-weight: 500;
-        }
-
-        .stat-value {
-            font-size: 22px;
-            font-weight: 800;
-            color: var(--text-dark);
-        }
-
-        .lives-display {
-            display: flex;
-            gap: 4px;
-            justify-content: center;
-        }
-
-        .heart {
-            font-size: 20px;
-            transition: all 0.3s ease;
-        }
-
-        .heart.lost {
-            opacity: 0.2;
-            transform: scale(0.8);
-        }
-
-        /* Level Badge */
-        .level-badge {
-            background: linear-gradient(145deg, var(--primary), var(--primary-dark));
-            padding: 6px 16px;
-            border-radius: 30px;
-            font-weight: 700;
-            font-size: 13px;
-            color: var(--text-dark);
-        }
-
-        /* Question Card */
-        .question-card {
-            background: var(--white);
-            border-radius: 24px;
-            padding: 30px 24px;
-            box-shadow: var(--shadow-lg);
-            margin-bottom: 20px;
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .emoji-display {
-            font-size: 52px;
-            text-align: center;
-            padding: 30px 0;
-            letter-spacing: 8px;
-            line-height: 1.4;
-            flex: 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 140px;
-        }
-
-        /* Hint Section */
-        .hint-section {
-            margin-top: auto;
-            padding-top: 20px;
-            border-top: 1px solid #E2E8F0;
-        }
-
-        .hint-btn {
-            width: 100%;
-            padding: 14px;
-            background: #F8FAFC;
-            border: 2px dashed #CBD5E1;
-            border-radius: 12px;
-            cursor: pointer;
-            font-family: inherit;
-            font-size: 14px;
-            color: var(--text-gray);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            transition: all 0.3s ease;
-        }
-
-        .hint-btn:hover:not(:disabled) {
-            background: var(--primary-light);
-            border-color: var(--primary);
-            color: var(--text-dark);
-        }
-
-        .hint-btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-
-        .hint-count {
-            background: var(--primary);
-            padding: 2px 8px;
-            border-radius: 10px;
-            font-weight: 700;
-            font-size: 12px;
-            color: var(--text-dark);
-        }
-
-        .hint-display {
-            margin-top: 12px;
-            padding: 14px;
-            background: var(--primary-light);
-            border-radius: 12px;
-            font-size: 14px;
-            color: var(--text-dark);
-            text-align: center;
-            animation: slideDown 0.3s ease;
-        }
-
-        @keyframes slideDown {
-            from { opacity: 0; transform: translateY(-10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        /* Answer Input */
-        .answer-section {
-            display: flex;
-            gap: 12px;
-        }
-
-        .answer-input {
-            flex: 1;
-            padding: 16px 20px;
-            border: 2px solid #E2E8F0;
-            border-radius: 16px;
-            font-family: inherit;
-            font-size: 16px;
-            background: var(--white);
-            transition: all 0.3s ease;
-            text-align: right;
-        }
-
-        .answer-input:focus {
-            outline: none;
-            border-color: var(--primary);
-            box-shadow: 0 0 0 4px rgba(250, 204, 21, 0.2);
-        }
-
-        .answer-input.correct {
-            border-color: var(--success);
-            background: #F0FDF4;
-        }
-
-        .answer-input.wrong {
-            border-color: var(--danger);
-            background: #FEF2F2;
-            animation: shake 0.5s ease;
-        }
-
-        @keyframes shake {
-            0%, 100% { transform: translateX(0); }
-            25% { transform: translateX(-10px); }
-            75% { transform: translateX(10px); }
-        }
-
-        .submit-btn {
-            width: 56px;
-            height: 56px;
-            border-radius: 16px;
-            background: linear-gradient(145deg, var(--primary), var(--primary-dark));
-            border: none;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.3s ease;
-            flex-shrink: 0;
-        }
-
-        .submit-btn:hover {
-            transform: scale(1.05);
-        }
-
-        .submit-btn:active {
-            transform: scale(0.95);
-        }
-
-        .submit-btn svg {
-            width: 24px;
-            height: 24px;
-            fill: var(--text-dark);
-        }
-
-        /* Skip Button */
-.skip-btn {
-            width: 100%;
-            padding: 16px 24px;
-            background: var(--white);
-            border: 2px solid #E2E8F0;
-            border-radius: 16px;
-            cursor: pointer;
-            font-family: inherit;
-            font-size: 15px;
-            font-weight: 600;
-            color: var(--text-gray);
-            margin-top: 16px;
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-        }
-
-        .skip-btn:hover {
-            background: #FEF2F2;
-            border-color: var(--danger);
-            color: var(--danger);
-        }
-
-        .skip-btn:active {
-            transform: scale(0.98);
-        }
-
-        /* Game Over Screen */
-        .gameover-content {
-            text-align: center;
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            padding: 20px;
-        }
-
-        .gameover-emoji {
-            font-size: 80px;
-            margin-bottom: 24px;
-        }
-
-        .gameover-title {
-            font-size: 32px;
-            font-weight: 900;
-            color: var(--text-dark);
-            margin-bottom: 12px;
-        }
-
-        .gameover-subtitle {
-            font-size: 16px;
-            color: var(--text-gray);
-            margin-bottom: 30px;
-        }
-
-        .final-score {
-            background: var(--white);
-            padding: 24px;
-            border-radius: 20px;
-            margin-bottom: 24px;
-            box-shadow: var(--shadow);
-        }
-
-        .final-score-value {
-            font-size: 56px;
-            font-weight: 900;
-            color: var(--primary-dark);
-            line-height: 1;
-        }
-
-        .final-score-label {
-            font-size: 14px;
-            color: var(--text-gray);
-            margin-top: 8px;
-        }
-
-        .highscore-badge {
-            display: inline-block;
-            background: linear-gradient(145deg, var(--primary), var(--primary-dark));
-            padding: 8px 20px;
-            border-radius: 30px;
-            font-weight: 700;
-            font-size: 14px;
-            color: var(--text-dark);
-            margin-top: 12px;
-            animation: pulse 1.5s ease-in-out infinite;
-        }
-
-        @keyframes pulse {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-        }
-
-        .stats-row {
-            display: flex;
-            gap: 12px;
-            margin-bottom: 24px;
-        }
-
-        .stat-card {
-            flex: 1;
-            background: var(--white);
-            padding: 16px;
-            border-radius: 16px;
-            box-shadow: var(--shadow);
-        }
-
-        .stat-card-value {
-            font-size: 24px;
-            font-weight: 800;
-            color: var(--text-dark);
-        }
-
-        .stat-card-label {
-            font-size: 12px;
-            color: var(--text-gray);
-            margin-top: 4px;
-        }
-
-        /* Action Buttons */
-        .action-btn {
-            width: 100%;
-            padding: 18px;
-            border-radius: 16px;
-            border: none;
-            cursor: pointer;
-            font-family: inherit;
-            font-size: 16px;
-            font-weight: 700;
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-        }
-
-        .action-btn.primary {
-            background: linear-gradient(145deg, var(--primary), var(--primary-dark));
-            color: var(--text-dark);
-            box-shadow: 0 8px 30px rgba(250, 204, 21, 0.3);
-        }
-
-        .action-btn.secondary {
-            background: var(--white);
-            color: var(--text-dark);
-            box-shadow: var(--shadow);
-            margin-top: 12px;
-        }
-
-        .action-btn:hover {
-            transform: translateY(-2px);
-        }
-
-        .action-btn:active {
-            transform: translateY(0);
-        }
-
-        /* Footer */
-        .footer {
-            text-align: center;
-            padding: 20px;
-            margin-top: auto;
-        }
-
-        .footer p {
-            font-size: 11px;
-            color: var(--text-gray);
-            line-height: 1.8;
-        }
-
-        .footer a {
-            color: var(--text-gray);
-            text-decoration: none;
-        }
-
-        /* Loading */
-        .loading {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            padding: 40px;
-        }
-
-        .loading-dot {
-            width: 12px;
-            height: 12px;
-            background: var(--primary);
-            border-radius: 50%;
-            animation: loadingBounce 0.6s ease-in-out infinite;
-        }
-
-        .loading-dot:nth-child(2) { animation-delay: 0.1s; }
-        .loading-dot:nth-child(3) { animation-delay: 0.2s; }
-
-        @keyframes loadingBounce {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-12px); }
-        }
-
-        /* Sound Toggle */
-        .sound-toggle {
-            position: fixed;
-            top: 20px;
-            left: 20px;
-            width: 44px;
-            height: 44px;
-            border-radius: 50%;
-            background: var(--white);
-            border: none;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: var(--shadow);
-            transition: all 0.3s ease;
-            z-index: 100;
-        }
-
-        .sound-toggle:hover {
-            transform: scale(1.1);
-        }
-
-        .sound-toggle svg {
-            width: 22px;
-            height: 22px;
-            fill: var(--text-dark);
-        }
-
-        .sound-toggle.muted svg {
-            fill: var(--text-gray);
-        }
-
-        /* Toast Notification */
-        .toast {
-            position: fixed;
-            bottom: 100px;
-            left: 50%;
-            transform: translateX(-50%) translateY(100px);
-            background: var(--text-dark);
-            color: var(--white);
-            padding: 14px 24px;
-            border-radius: 30px;
-            font-size: 14px;
-            font-weight: 500;
-            opacity: 0;
-            transition: all 0.4s ease;
-            z-index: 1000;
-            white-space: nowrap;
-        }
-
-        .toast.show {
-            opacity: 1;
-            transform: translateX(-50%) translateY(0);
-        }
-
-        /* Confetti Canvas */
-        #confetti-canvas {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: 999;
-        }
-
-        /* Responsive */
-        @media (max-width: 380px) {
-            .game-title { font-size: 26px; }
-            .emoji-display { font-size: 42px; }
-            .stat-value { font-size: 18px; }
-        }
-    </style>
+    <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
-    <button class="sound-toggle" id="soundToggle" title="تشغيل/إيقاف الصوت">
-        <svg viewBox="0 0 24 24" id="soundIcon">
-            <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
-        </svg>
-    </button>
+    <div class="top-toggles">
+        <button class="icon-btn" id="soundToggle" title="تشغيل/إيقاف الصوت" aria-label="تشغيل أو إيقاف الصوت">
+            <svg viewBox="0 0 24 24" id="soundIcon"></svg>
+        </button>
+        <button class="icon-btn" id="themeToggle" title="الوضع الليلي" aria-label="الوضع الليلي">🌙</button>
+    </div>
 
     <canvas id="confetti-canvas"></canvas>
     <div class="toast" id="toast"></div>
@@ -717,32 +34,65 @@
             <div class="logo-section">
                 <div class="logo-emoji">🎭</div>
                 <h1 class="game-title">لعبة تمثيل الرموز التعبيرية</h1>
-                <p class="game-subtitle">فكّ رموز الرموز التعبيرية لكشف العبارات المخفية</p>
+                <p class="game-subtitle">فكّ رموز الإيموجي لتكتشف الأمثال والحكم</p>
             </div>
 
-            <div class="difficulty-section">
-                <h3 class="section-title">اختر مستوى الصعوبة</h3>
-                <div class="difficulty-options">
-                    <button class="difficulty-btn" data-level="easy">
-                        <span>🌱</span>
-                        <p>سهل</p>
-                    </button>
-                    <button class="difficulty-btn selected" data-level="medium">
-                        <span>🔥</span>
-                        <p>متوسط</p>
-                    </button>
-                    <button class="difficulty-btn" data-level="hard">
-                        <span>💀</span>
-                        <p>صعب</p>
-                    </button>
+            <div class="resume-banner" id="resumeBanner" style="display: none;">
+                <span class="resume-banner-icon">▶️</span>
+                <div class="resume-banner-text">
+                    <span class="resume-banner-title">استكمال اللعبة السابقة</span>
+                    <span class="resume-banner-subtitle">
+                        <span id="resumeDifficulty"></span> · <span id="resumeScore"></span> نقطة
+                    </span>
                 </div>
+                <button class="resume-close" id="resumeClose" aria-label="إغلاق">✕</button>
             </div>
 
-            <button class="play-btn" id="playBtn">
+            <h3 class="section-title">اختر النمط</h3>
+            <div class="mode-row">
+                <button class="mode-chip" id="classicChip" type="button">
+                    <span class="mode-chip-icon">🎯</span>
+                    <span class="mode-chip-label">كلاسيكي</span>
+                </button>
+                <button class="mode-chip" id="dailyChip" type="button">
+                    <span class="mode-chip-icon">🌅</span>
+                    <span class="mode-chip-label">
+                        <span class="mode-chip-badge" id="dailyDoneBadge" style="display:none;">✓</span>
+                        تحدي اليوم
+                    </span>
+                </button>
+            </div>
+
+            <h3 class="section-title">مستوى الصعوبة</h3>
+            <div class="difficulty-options">
+                <button class="difficulty-btn" data-level="easy" type="button">
+                    <span>🌱</span>
+                    <p>سهل</p>
+                </button>
+                <button class="difficulty-btn selected" data-level="medium" type="button">
+                    <span>🔥</span>
+                    <p>متوسط</p>
+                </button>
+                <button class="difficulty-btn" data-level="hard" type="button">
+                    <span>💀</span>
+                    <p>صعب</p>
+                </button>
+            </div>
+
+            <h3 class="section-title">الفئة</h3>
+            <div class="category-grid" id="categoryGrid"></div>
+
+            <div class="toggle-row">
+                <button class="toggle-btn" id="timerToggle" type="button">⏱️ تشغيل المؤقت</button>
+            </div>
+
+            <button class="play-btn" id="playBtn" aria-label="ابدأ اللعب">
                 <svg viewBox="0 0 24 24">
                     <path d="M8 5v14l11-7z"/>
                 </svg>
             </button>
+
+            <button class="install-btn" id="installBtn" type="button">📲 ثبّت اللعبة</button>
 
             <div class="footer">
                 <p>تطوير: عبدالكريم العبود | <a href="mailto:abo.saleh.g@gmail.com">abo.saleh.g@gmail.com</a></p>
@@ -768,6 +118,14 @@
                 </div>
             </div>
 
+            <div class="streak-badge" id="streakBadge">
+                🔥 <span id="streakCount">0</span>
+            </div>
+
+            <div class="timer-bar" id="timerBar">
+                <div class="timer-bar-fill" id="timerBarFill"></div>
+            </div>
+
             <div class="question-card">
                 <div class="emoji-display" id="emojiDisplay">
                     <div class="loading">
@@ -778,7 +136,7 @@
                 </div>
 
                 <div class="hint-section">
-                    <button class="hint-btn" id="hintBtn">
+                    <button class="hint-btn" id="hintBtn" type="button">
                         <span>💡</span>
                         <span>اظهر تلميح</span>
                         <span class="hint-count" id="hintCount">3</span>
@@ -788,15 +146,15 @@
             </div>
 
             <div class="answer-section">
-                <input type="text" class="answer-input" id="answerInput" placeholder="اكتب إجابتك هنا..." autocomplete="off">
-                <button class="submit-btn" id="submitBtn">
+                <input type="text" class="answer-input" id="answerInput" placeholder="اكتب إجابتك هنا..." autocomplete="off" aria-label="إجابتك">
+                <button class="submit-btn" id="submitBtn" aria-label="إرسال الإجابة">
                     <svg viewBox="0 0 24 24">
                         <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
                     </svg>
                 </button>
             </div>
 
-            <button class="skip-btn" id="skipBtn">تخطي السؤال ❯</button>
+            <button class="skip-btn" id="skipBtn" type="button">تخطي السؤال ❯</button>
         </div>
 
         <!-- Game Over Screen -->
@@ -823,11 +181,11 @@
                     </div>
                 </div>
 
-                <button class="action-btn primary" id="playAgainBtn">
+                <button class="action-btn primary" id="playAgainBtn" type="button">
                     <span>🔄</span>
                     العب مرة أخرى
                 </button>
-                <button class="action-btn secondary" id="shareBtn">
+                <button class="action-btn secondary" id="shareBtn" type="button">
                     <span>📤</span>
                     شارك نتيجتك
                 </button>
@@ -835,640 +193,11 @@
 
             <div class="footer">
                 <p>تطوير: عبدالكريم العبود | <a href="mailto:abo.saleh.g@gmail.com">abo.saleh.g@gmail.com</a></p>
-                <p>© 2024 ImageMetrics Tool - All Rights Reserved</p>
+                <p>© 2024 Emoji representation game - All Rights Reserved</p>
             </div>
         </div>
     </div>
 
-    <script>
-        // ========== قاعدة بيانات الأسئلة ==========
-        const questionsDB = {
-            easy: [
-                { emoji: "🍎🌳", answer: "التفاحة لا تسقط بعيداً عن الشجرة", hints: ["مثل عن الوراثة", "يتحدث عن الأبناء والآباء", "التفاحة قريبة من أصلها"] },
-                { emoji: "🐦✋", answer: "عصفور في اليد خير من عشرة على الشجرة", hints: ["عن القناعة", "أفضل من الذي على الشجرة", "مثل شعبي مشهور"] },
-                { emoji: "💧🪨", answer: "قطرة الماء تثقب الحجر", hints: ["عن المثابرة", "الصبر يحقق المستحيل", "الماء والصخر"] },
-                { emoji: "🔑❤️", answer: "القلوب عند بعضها", hints: ["عن التفاهم", "الحب والتواصل", "القلوب متصلة"] },
-                { emoji: "🌅🐔", answer: "من بكّر طار", hints: ["عن النشاط الصباحي", "البكور مفيد", "الاستيقاظ المبكر"] },
-                { emoji: "👁️👁️❌🫀", answer: "بعيد عن العين بعيد عن القلب", hints: ["عن البعد والنسيان", "الغياب", "المسافة تؤثر"] },
-                { emoji: "🤐🥇", answer: "السكوت من ذهب", hints: ["عن قيمة الصمت", "الكلام فضة", "مثل عن الحكمة"] },
-                { emoji: "⏰💰", answer: "الوقت من ذهب", hints: ["عن قيمة الوقت", "لا تضيع وقتك", "الوقت ثمين"] },
-                { emoji: "📚🗡️", answer: "القلم أقوى من السيف", hints: ["عن قوة العلم", "الكتابة والمعرفة", "العلم قوة"] },
-                { emoji: "🏠💕", answer: "بيتي جنتي", hints: ["عن حب الوطن", "المنزل عزيز", "راحة البال في البيت"] },
-                { emoji: "👂👂🗣️", answer: "من كثر كلامه قل احترامه", hints: ["عن قلة الكلام", "الصمت أفضل أحياناً", "كثرة الكلام مذمومة"] },
-                { emoji: "🐪💨", answer: "العجلة من الشيطان", hints: ["عن التأني", "لا تستعجل", "التسرع مذموم"] },
-                { emoji: "🤝💪", answer: "الاتحاد قوة", hints: ["عن التعاون", "معاً أقوى", "الجماعة أفضل"] },
-                { emoji: "😊💊", answer: "الابتسامة أفضل دواء", hints: ["عن السعادة", "الضحك مفيد", "الابتسامة تشفي"] },
-                { emoji: "🌙🌟", answer: "ليلة القدر خير من ألف شهر", hints: ["آية قرآنية", "عن شهر رمضان", "ليلة مباركة"] },
-                { emoji: "🦁🐑", answer: "الذئب لا يرعى الغنم", hints: ["عن الثقة في غير موضعها", "لا تأتمن عدوك", "الطبع يغلب"] },
-                { emoji: "💪🧠", answer: "العقل السليم في الجسم السليم", hints: ["عن الصحة", "الرياضة مهمة", "العقل والجسد متصلان"] },
-                { emoji: "🌊🐟", answer: "السمكة الكبيرة تأكل الصغيرة", hints: ["عن قانون الغاب", "القوي يغلب", "الحياة صعبة"] },
-                { emoji: "🔥💨", answer: "لا دخان بلا نار", hints: ["كل شيء له سبب", "الإشاعات لها أصل", "هناك سبب دائماً"] },
-                { emoji: "👀🫀", answer: "العين بصيرة واليد قصيرة", hints: ["عن العجز", "أرى ولا أستطيع", "القدرة محدودة"] },
-                { emoji: "👁️🐪", answer: "عين الحسود فيها عود", hints: ["عن الحسد", "العين تؤذي", "دعاء ضد الحاسد"] },
-                { emoji: "🏠🔥🏠", answer: "الجار قبل الدار", hints: ["أهمية الجيران", "اختر جارك قبل بيتك", "مثل عن الجيرة"] },
-                { emoji: "💰👋", answer: "الفلوس تجيب العروس", hints: ["المال مهم للزواج", "مثل عن الزواج", "الغنى يسهل الأمور"] },
-                { emoji: "🌴💨", answer: "اللي ما تحركه الريح ثقيل", hints: ["عن الثبات", "القوي لا يتأثر", "مثل عن الصمود"] },
-                { emoji: "🐕🦴", answer: "الكلب يعرف ربعه", hints: ["عن معرفة الأصدقاء", "الوفاء للأهل", "مثل عن الولاء"] },
-                { emoji: "🌙⭐", answer: "كل ليلة ولها صبح", hints: ["الفرج قادم", "بعد الليل نهار", "عن الأمل"] },
-                { emoji: "🐴💨", answer: "الخيل من خيّالها", hints: ["القائد يصنع الفرق", "الفارس مهم", "عن القيادة"] },
-                { emoji: "🦅👀", answer: "الصقر ما ياكل إلا حي", hints: ["الكرامة في العمل", "لا يأخذ بلا جهد", "عن العزة"] },
-                { emoji: "🏜️🌧️", answer: "المطر ما ينفع في البر اليابس", hints: ["الشيء في غير موضعه", "لا فائدة", "عن الجدوى"] },
-                { emoji: "👂👄", answer: "اللي يسمع يخرف", hints: ["كثرة السماع", "الإشاعات", "لا تصدق كل شيء"] },
-                { emoji: "🐫🚶", answer: "صاحب البعير أدرى بمناخه", hints: ["صاحب الشيء أعلم به", "الخبرة مهمة", "اسأل أهل الاختصاص"] },
-                { emoji: "🔥🍞", answer: "اللي يبي الحب يصبر على التعب", hints: ["النجاح يحتاج صبر", "لا راحة بلا تعب", "عن الكفاح"] },
-                { emoji: "👋🏠", answer: "بيت السكوت ما يخرب", hints: ["الصمت حكمة", "قلة الكلام سلامة", "عن السكوت"] },
-                { emoji: "🐑🐑", answer: "الغنم ما تنطح إلا من روسها", hints: ["المشاكل من الداخل", "الخلاف بين الأقارب", "عن الفتنة"] },
-                { emoji: "☀️🌴", answer: "كل شي بوقته حلو", hints: ["التوقيت مهم", "لكل شيء وقت", "عن الصبر"] },
-                { emoji: "💎👋", answer: "اللي في يده الذهب ما يخاف", hints: ["المال يعطي أمان", "الغني مطمئن", "عن الثراء"] },
-                { emoji: "🐪🐪👁️", answer: "الإبل على كثرها ما تسد عين الحسود", hints: ["الحسود لا يشبع", "مهما أعطيته", "عن الحسد"] },
-                { emoji: "👨‍👦🌳", answer: "اللي ما عنده كبير يشتري له كبير", hints: ["أهمية الكبار", "الحكمة من الشيوخ", "احترام الكبير"] },
-                { emoji: "🐔🥚💰", answer: "الدجاجة اللي تبيض ذهب لا تذبحها", hints: ["لا تضحي بمصدر رزقك", "الصبر على المكاسب", "عن الحكمة"] },
-                { emoji: "🦅⬇️🦅", answer: "الصقر لو يوقع يبقى صقر", hints: ["الأصل يبقى", "الشريف شريف", "عن الأصالة"] }
-            ],
-            medium: [
-                { emoji: "🐘🧠💭", answer: "ذاكرة الفيل", hints: ["عن قوة الذاكرة", "لا ينسى أبداً", "حيوان لا ينسى"] },
-                { emoji: "🌈☔", answer: "بعد المطر تطلع الشمس", hints: ["عن الأمل", "الفرج قادم", "بعد الضيق فرج"] },
-                { emoji: "🐜🏔️", answer: "النملة تحرك الجبل", hints: ["عن المثابرة", "الإصرار يصنع المعجزات", "لا تستهن بالصغير"] },
-                { emoji: "🗣️💎🤫🥇", answer: "الكلام من فضة والسكوت من ذهب", hints: ["عن الصمت والكلام", "أحياناً الصمت أفضل", "مثل عربي شهير"] },
-                { emoji: "🚶‍♂️🐢🏆", answer: "من سار على الدرب وصل", hints: ["عن الصبر", "المثابرة تؤدي للنجاح", "استمر في طريقك"] },
-                { emoji: "🌹🌿", answer: "كل وردة ولها شوكة", hints: ["لكل جميل عيب", "الحياة فيها حلو ومر", "لا شيء كامل"] },
-                { emoji: "👤🪞", answer: "اللي ما يعرفك ما يثمنك", hints: ["قيمتك عند من يعرفك", "الجاهل لا يقدر", "القيمة في المعرفة"] },
-                { emoji: "🍇🦊", answer: "العنب الذي لا تناله اليد حامض", hints: ["قصة الثعلب والعنب", "التبرير للفشل", "ما لا تستطيعه تزهد فيه"] },
-                { emoji: "🚪🔨", answer: "الباب اللي يجيك منه ريح سده واستريح", hints: ["تجنب المشاكل", "أغلق باب المتاعب", "الوقاية خير"] },
-                { emoji: "🧓📚👶", answer: "اسأل مجرب ولا تسأل طبيب", hints: ["الخبرة أهم", "التجربة خير معلم", "المجرب أعلم"] },
-                { emoji: "🌾🐦", answer: "إذا طاح الجمل كثرت سكاكينه", hints: ["عندما يضعف القوي", "الناس تهجم على الضعيف", "كثرة الطامعين"] },
-                { emoji: "👁️⚠️🤲", answer: "من راقب الناس مات هماً", hints: ["لا تشغل بالك بالآخرين", "التطفل مذموم", "عش حياتك"] },
-                { emoji: "🌙⭐🔦", answer: "اطلب العلى واترك الدنى", hints: ["اسعَ للأفضل", "الطموح مطلوب", "لا ترضَ بالقليل"] },
-                { emoji: "🪙🔄🪙", answer: "الدنيا دولاب", hints: ["الأيام دول", "الحال يتغير", "لا شيء يدوم"] },
-                { emoji: "💔🩹⏰", answer: "الزمن كفيل بكل شيء", hints: ["الوقت يشفي", "الصبر جميل", "كل شيء يمر"] },
-                { emoji: "🐕🦴🏠", answer: "الكلب في بيته سبع", hints: ["القوة في موطنك", "الإنسان قوي في أرضه", "الشجاعة في الوطن"] },
-                { emoji: "🌊🌊🚢", answer: "البحر ما يكدره زود العيون", hints: ["الكبير لا يتأثر بالصغير", "لا تؤثر على العظيم", "الحسد لا يضر الواثق"] },
-                { emoji: "🎭😊😢", answer: "الدنيا مسرح كبير", hints: ["الحياة تمثيل", "كلنا نلعب أدواراً", "شكسبير قالها"] },
-                { emoji: "📖✨🧠", answer: "القراءة غذاء الروح", hints: ["أهمية القراءة", "الكتب مفيدة", "اقرأ تستفد"] },
-                { emoji: "🌱💧☀️🌳", answer: "ازرع ولو في الصخر", hints: ["لا تيأس", "حاول دائماً", "الأمل موجود"] },
-                { emoji: "🌊🏊", answer: "اللي يخوض البحر ما يخاف من المطر", hints: ["الشجاع لا يخاف", "من جرب الصعب", "عن الجرأة"] },
-                { emoji: "🐫👃", answer: "البعير ما يشوف عوجة رقبته", hints: ["الإنسان لا يرى عيوبه", "انتقاد الغير", "عن النقد الذاتي"] },
-                { emoji: "🌴🪓", answer: "اللي يزرع الشوك ما يحصد تمر", hints: ["كما تزرع تحصد", "النتيجة من العمل", "عن الجزاء"] },
-                { emoji: "🦁🐶", answer: "ابن الأسد أسد", hints: ["الفرع من الأصل", "الابن مثل أبيه", "عن الوراثة"] },
-                { emoji: "💧🥛", answer: "الماي ما يصير لبن", hints: ["الشيء لا يتغير", "الأصل ثابت", "عن الطبيعة"] },
-                { emoji: "🏠👁️❤️", answer: "بيتك يا اللي تحبه ولو كان خيمة", hints: ["حب الوطن", "البيت عزيز", "عن الانتماء"] },
-                { emoji: "🐎💨🌫️", answer: "الخيل إن غابت طلع غبارها", hints: ["الأثر يبقى", "السمعة تدوم", "عن الذكرى"] },
-                { emoji: "🦷🍽️", answer: "اللي ياكل على ضرسه ينفع نفسه", hints: ["الاعتماد على النفس", "اعمل بيدك", "عن الاستقلالية"] },
-                { emoji: "🐺🐑🛡️", answer: "ذيب يحرس غنم", hints: ["وضع الخائن أميناً", "الثقة في غير موضعها", "عن الخيانة"] },
-                { emoji: "🌾👨‍🌾🍽️", answer: "ازرع كل يوم تاكل كل يوم", hints: ["العمل المستمر", "الاستمرارية", "عن الاجتهاد"] },
-                { emoji: "🐔✋🦅☁️", answer: "دجاجة في اليد ولا صقر في السما", hints: ["القناعة بالموجود", "المضمون أفضل", "عن القناعة"] },
-                { emoji: "🌊🚢👨‍✈️", answer: "البحر له ناس وأهل", hints: ["كل شيء له أهله", "الخبرة مطلوبة", "عن التخصص"] },
-                { emoji: "🍳🔥❌", answer: "اللي ما يعرف يطبخ يحرق الزاد", hints: ["الجاهل يفسد", "العلم ضروري", "عن المعرفة"] },
-                { emoji: "🌴🌴💪", answer: "النخلة ما تبرك إلا على ليفها", hints: ["الاعتماد على الأهل", "القوة من الداخل", "عن الأصل"] },
-                { emoji: "💨🐫🔍", answer: "إذا هب الهبوب تعرف الركايب", hints: ["الشدة تكشف المعادن", "الأزمات تبين الحقيقة", "عن الاختبار"] },
-                { emoji: "👴📖👨‍⚕️", answer: "اسأل مجرب ولا تسأل حكيم", hints: ["التجربة أهم", "العملي أفضل", "عن الخبرة"] },
-                { emoji: "🪵💨🔥", answer: "كل عود فيه دخان", hints: ["لكل شيء عيب", "لا أحد كامل", "مثل خليجي"] },
-                { emoji: "🐍🥛☠️", answer: "تحلب الثعبان سم", hints: ["الشرير يبقى شرير", "لا خير من السيء", "عن الطبع"] },
-                { emoji: "👨‍👦💪😢", answer: "العز للرجال والذل للرجال", hints: ["الرجل يمر بكل شيء", "الأيام دول", "عن تقلبات الحياة"] },
-                { emoji: "🐪🏃🚫", answer: "اللي ما يعرف الصقر يشويه", hints: ["عن الجهل بالقيمة", "الصقر طير ثمين", "مثل خليجي مشهور"] }
-            ],
-            hard: [
-                { emoji: "🏰🧱👤", answer: "من حفر حفرة لأخيه وقع فيها", hints: ["الكيد يرتد", "من يضر غيره يتضرر", "الظلم مرتد"] },
-                { emoji: "🌅🌄🔄", answer: "دوام الحال من المحال", hints: ["لا شيء يدوم", "التغيير سنة الحياة", "الأيام تتبدل"] },
-                { emoji: "🎭🎪🌍", answer: "الدنيا ساعة فاجعلها طاعة", hints: ["الحياة قصيرة", "استغل وقتك", "حكمة إسلامية"] },
-                { emoji: "⚖️🦁🐜", answer: "إذا أردت أن تطاع فأمر بما يستطاع", hints: ["القيادة الحكيمة", "لا تكلف فوق الطاقة", "الأمر الممكن"] },
-                { emoji: "🗡️🛡️📜", answer: "السيف أصدق إنباء من الكتب", hints: ["بيت شعر للمتنبي", "الفعل أقوى من الكلام", "التجربة خير برهان"] },
-                { emoji: "🌙🔭🌟🎯", answer: "من لم يكن له بداية محرقة لم تكن له نهاية مشرقة", hints: ["البدايات الصعبة", "الكفاح يؤدي للنجاح", "لا مجد بلا تعب"] },
-                { emoji: "🏛️👑💀", answer: "كم من عظيم قضى وهو صغير وكم من صغير عاش وهو كبير", hints: ["القيمة ليست بالعمر", "العظمة بالأفعال", "الموت لا يفرق"] },
-                { emoji: "🌊⛵🧭❌", answer: "البحر طريق من لا طريق له", hints: ["خيار الضعيف", "الهجرة والمخاطرة", "اللجوء للمجهول"] },
-                { emoji: "🦅🪺🌄", answer: "لا تحسبن المجد تمراً أنت آكله لن تبلغ المجد حتى تلعق الصبرا", hints: ["شعر عربي", "المجد يحتاج صبر", "النجاح صعب"] },
-                { emoji: "⏳💎🌅", answer: "إضاعة الوقت أشد من الموت", hints: ["قيمة الوقت", "حكمة إسلامية", "الوقت أغلى شيء"] },
-                { emoji: "🎯🏹🌙", answer: "من جد وجد ومن زرع حصد", hints: ["الجهد يؤتي ثماره", "اعمل تجد", "النتيجة من السعي"] },
-                { emoji: "🦁👑🪦", answer: "عش عزيزاً أو مت وأنت كريم", hints: ["الكرامة قبل كل شيء", "العزة في الحياة والموت", "شعر حماسي"] },
-                { emoji: "📿🕌🌙✨", answer: "رب اشرح لي صدري ويسر لي أمري", hints: ["دعاء نبي الله موسى", "طلب التيسير من الله", "آية قرآنية"] },
-                { emoji: "⚔️🏰🔥💨", answer: "الحرب خدعة", hints: ["حديث نبوي", "المكر في الحرب", "الذكاء العسكري"] },
-                { emoji: "🌹🔥💨⏳", answer: "كل من عليها فان ويبقى وجه ربك ذو الجلال والإكرام", hints: ["آية قرآنية", "الفناء للجميع", "البقاء لله وحده"] },
-                { emoji: "🦋🌸🍂❄️", answer: "لكل زمان دولة ورجال", hints: ["التغيير سنة", "الأوقات تتبدل", "لكل عصر أبطاله"] },
-                { emoji: "🏔️🌊🌪️🔥", answer: "من صبر ظفر", hints: ["الصبر مفتاح النصر", "انتظر وستنتصر", "مثل عن الصبر"] },
-                { emoji: "👁️🔮🌅🌄", answer: "رب ضارة نافعة", hints: ["الشر قد يأتي بخير", "المصائب فيها فوائد", "انظر للجانب الإيجابي"] },
-                { emoji: "🎭👤🪞👥", answer: "الناس أعداء ما جهلوا", hints: ["الجهل سبب العداوة", "حكمة علي بن أبي طالب", "العلم يزيل العداوة"] },
-                { emoji: "📜✍️🩸💪", answer: "ما حك جلدك مثل ظفرك فتول أنت جميع أمرك", hints: ["اعتمد على نفسك", "لا أحد يهتم بأمرك مثلك", "شعر عربي قديم"] },
-                { emoji: "🏜️🌅⏳😓", answer: "الصبر مفتاح الفرج واللي يستعجل يتعب", hints: ["حكمة خليجية", "التأني مطلوب", "عن الصبر والنتائج"] },
-                { emoji: "🚢🏔️🎯", answer: "اللي ما يركب المراكب ما يجي له مراده", hints: ["المخاطرة مطلوبة", "لا نجاح بلا مغامرة", "عن الشجاعة"] },
-                { emoji: "🦅👑✋🍖", answer: "الصقر لو جاع ما ياكل إلا من كسب يده", hints: ["العزة في العمل", "الكرامة أولاً", "عن الشرف"] },
-                { emoji: "👳🧕❌👨", answer: "ما كل من لبس العقال صار رجال", hints: ["المظهر لا يكفي", "الرجولة بالأفعال", "عن الحقيقة"] },
-                { emoji: "🧳🏠😢", answer: "الغريب لو كرموه غريب", hints: ["الغربة صعبة", "الوطن لا يعوض", "عن الاغتراب"] },
-                { emoji: "🦪💎🏊", answer: "اللي يبي اللؤلؤ يغوص له", hints: ["النفيس يحتاج جهد", "لا شيء بسهولة", "عن الكفاح"] },
-                { emoji: "🛤️🛤️😵", answer: "كثر الدروب تضيع المسافر", hints: ["كثرة الخيارات تحير", "ركز على هدف واحد", "عن التركيز"] },
-                { emoji: "✋🦁👑", answer: "ما يحك جلدك مثل ظفرك", hints: ["اعتمد على نفسك", "أنت أدرى بأمورك", "عن الاستقلالية"] },
-                { emoji: "🏜️👑👑❌", answer: "البر ما يحتمل اثنين من ربعه", hints: ["القيادة لواحد", "لا يصلح رئيسان", "عن الزعامة"] },
-                { emoji: "🦅🪽✈️", answer: "الطير لو طار ما طار إلا بجناحه", hints: ["لا تعتمد على غيرك", "قوتك منك", "عن الاستقلال"] },
-                { emoji: "🏠🌾🔥❌", answer: "اللي بيته من قش ما يحارب بالنار", hints: ["اعرف قدرك", "لا تتحدى بما يضرك", "عن الحكمة"] },
-                { emoji: "🐍🥚🐍", answer: "الحية ما تلد إلا حية", hints: ["الأصل يورث", "ابن الشرير شرير", "عن الوراثة"] },
-                { emoji: "🌊😌⛵❌", answer: "البحار الهادي ما يصنع بحار ماهر", hints: ["الصعوبات تصنع الرجال", "التحديات ضرورية", "عن التجربة"] },
-                { emoji: "✨🔍💎❌", answer: "ما كل ما يلمع ذهب", hints: ["لا تنخدع بالمظاهر", "الحقيقة مختلفة", "عن التمييز"] },
-                { emoji: "🐫👁️⬅️", answer: "عين البعير ما تشوف إلا قدامها", hints: ["النظرة المحدودة", "الرؤية الضيقة", "عن ضيق الأفق"] },
-                { emoji: "🦅☁️⬆️😰", answer: "الصقر يرتفع فوق السحاب وقت الضيق", hints: ["الشجاع يظهر بالشدة", "القوي في الأزمات", "عن العزيمة"] },
-                { emoji: "🌴💧☀️🍇", answer: "النخلة ما تثمر إلا إذا رويتها", hints: ["العناية تأتي بالثمار", "الاهتمام مطلوب", "عن الرعاية"] },
-                { emoji: "🏃💨🏆❌", answer: "اللي يسابق الريح يتعب حاله", hints: ["لا تتحدى المستحيل", "اعرف حدودك", "عن الواقعية"] },
-                { emoji: "👑🛏️🧹", answer: "الشيخ شيخ لو نام على حصير", hints: ["القيمة بالجوهر", "المكانة ليست بالمال", "عن الأصالة"] },
-                { emoji: "💪🍽️❌😤", answer: "اللي له عز ما يذل ولو جاع", hints: ["الكرامة لا تباع", "العزة فوق كل شيء", "عن الشرف"] }
-            ]
-        };
-
-        // ========== الأصوات ==========
-        const sounds = {
-            correct: null,
-            wrong: null,
-            hint: null,
-            levelup: null,
-            gameover: null,
-            highscore: null,
-            click: null,
-            start: null
-        };
-
-        let soundEnabled = true;
-
-        // تحميل الأصوات
-        function loadSounds() {
-            const soundFiles = {
-                correct: 'assets/sounds/correct.mp3',
-                wrong: 'assets/sounds/wrong.mp3',
-                hint: 'assets/sounds/hint.mp3',
-                levelup: 'assets/sounds/levelup.mp3',
-                gameover: 'assets/sounds/gameover.mp3',
-                highscore: 'assets/sounds/highscore.mp3',
-                click: 'assets/sounds/click.mp3',
-                start: 'assets/sounds/start.mp3'
-            };
-
-            for (const [key, path] of Object.entries(soundFiles)) {
-                sounds[key] = new Audio(path);
-                sounds[key].preload = 'auto';
-            }
-        }
-
-        function playSound(soundName) {
-            if (soundEnabled && sounds[soundName]) {
-                sounds[soundName].currentTime = 0;
-                sounds[soundName].play().catch(() => {});
-            }
-        }
-
-        // ========== حالة اللعبة ==========
-        let gameState = {
-            score: 0,
-            lives: 3,
-            level: 1,
-            correctAnswers: 0,
-            difficulty: 'medium',
-            currentQuestion: null,
-            hintsUsed: 0,
-            hintsRemaining: 3,
-            usedQuestions: [],
-            highScore: parseInt(localStorage.getItem('emojiCharades_highScore')) || 0
-        };
-
-        // ========== العناصر ==========
-        const elements = {
-            startScreen: document.getElementById('startScreen'),
-            gameScreen: document.getElementById('gameScreen'),
-            gameoverScreen: document.getElementById('gameoverScreen'),
-            playBtn: document.getElementById('playBtn'),
-            scoreDisplay: document.getElementById('scoreDisplay'),
-            levelBadge: document.getElementById('levelBadge'),
-            livesDisplay: document.getElementById('livesDisplay'),
-            emojiDisplay: document.getElementById('emojiDisplay'),
-            hintBtn: document.getElementById('hintBtn'),
-            hintCount: document.getElementById('hintCount'),
-            hintDisplay: document.getElementById('hintDisplay'),
-            answerInput: document.getElementById('answerInput'),
-            submitBtn: document.getElementById('submitBtn'),
-            skipBtn: document.getElementById('skipBtn'),
-            finalScore: document.getElementById('finalScore'),
-            highscoreBadge: document.getElementById('highscoreBadge'),
-            correctAnswers: document.getElementById('correctAnswers'),
-            highestLevel: document.getElementById('highestLevel'),
-            playAgainBtn: document.getElementById('playAgainBtn'),
-            shareBtn: document.getElementById('shareBtn'),
-            soundToggle: document.getElementById('soundToggle'),
-            toast: document.getElementById('toast'),
-            gameoverEmoji: document.getElementById('gameoverEmoji'),
-            gameoverSubtitle: document.getElementById('gameoverSubtitle')
-        };
-
-        // ========== وظائف مساعدة ==========
-        function showScreen(screenId) {
-            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-            document.getElementById(screenId).classList.add('active');
-        }
-
-        function showToast(message) {
-            elements.toast.textContent = message;
-            elements.toast.classList.add('show');
-            setTimeout(() => elements.toast.classList.remove('show'), 2500);
-        }
-
-        function updateUI() {
-            elements.scoreDisplay.textContent = gameState.score;
-            elements.levelBadge.textContent = `المستوى ${gameState.level}`;
-            elements.hintCount.textContent = gameState.hintsRemaining;
-            
-            // تحديث القلوب
-            const hearts = elements.livesDisplay.querySelectorAll('.heart');
-            hearts.forEach((heart, i) => {
-                heart.classList.toggle('lost', i >= gameState.lives);
-            });
-        }
-
-        function normalizeArabic(text) {
-            return text
-                .replace(/[أإآا]/g, 'ا')
-                .replace(/[ىي]/g, 'ي')
-                .replace(/ة/g, 'ه')
-                .replace(/[^\u0600-\u06FF\s]/g, '')
-                .replace(/\s+/g, ' ')
-                .trim();
-        }
-
-        function checkAnswer(userAnswer, correctAnswer) {
-            const normalizedUser = normalizeArabic(userAnswer.toLowerCase());
-            const normalizedCorrect = normalizeArabic(correctAnswer.toLowerCase());
-            
-            // تطابق تام
-            if (normalizedUser === normalizedCorrect) return true;
-            
-            // تطابق جزئي (80% على الأقل)
-            const words1 = normalizedUser.split(' ').filter(w => w.length > 2);
-            const words2 = normalizedCorrect.split(' ').filter(w => w.length > 2);
-            
-            if (words2.length === 0) return false;
-            
-            let matchCount = 0;
-            for (const word of words1) {
-                if (words2.some(w => w.includes(word) || word.includes(w))) {
-                    matchCount++;
-                }
-            }
-            
-            const matchRatio = matchCount / words2.length;
-            return matchRatio >= 0.6;
-        }
-
-        // ========== الأسئلة ==========
-        function getRandomQuestion() {
-            const questions = questionsDB[gameState.difficulty];
-            const available = questions.filter((_, i) => !gameState.usedQuestions.includes(i));
-            
-            if (available.length === 0) {
-                gameState.usedQuestions = [];
-                return getRandomQuestion();
-            }
-            
-            const randomIndex = Math.floor(Math.random() * available.length);
-            const originalIndex = questions.indexOf(available[randomIndex]);
-            gameState.usedQuestions.push(originalIndex);
-            
-            return available[randomIndex];
-        }
-
-        function shuffleEmoji(emoji) {
-            // تقسيم الإيموجي إلى مصفوفة (مع مراعاة أن بعض الإيموجي يتكون من عدة أحرف)
-            const emojiArray = [...emoji].filter(char => char.trim());
-            
-            // خلط عشوائي
-            for (let i = emojiArray.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [emojiArray[i], emojiArray[j]] = [emojiArray[j], emojiArray[i]];
-            }
-            
-            return emojiArray.join(' ');
-        }
-
-        async function loadQuestion() {
-            elements.emojiDisplay.innerHTML = `
-                <div class="loading">
-                    <div class="loading-dot"></div>
-                    <div class="loading-dot"></div>
-                    <div class="loading-dot"></div>
-                </div>
-            `;
-            elements.hintDisplay.style.display = 'none';
-            elements.answerInput.value = '';
-            elements.answerInput.classList.remove('correct', 'wrong');
-            gameState.hintsUsed = 0;
-            gameState.hintsRemaining = 3;
-            elements.hintCount.textContent = '3';
-            elements.hintBtn.disabled = false;
-
-            // محاولة استخدام Claude API أولاً
-            try {
-                const question = await generateQuestionWithAPI();
-                if (question) {
-                    gameState.currentQuestion = question;
-                    elements.emojiDisplay.textContent = shuffleEmoji(question.emoji);
-                    return;
-                }
-            } catch (e) {
-                console.log('Using local questions database');
-            }
-
-            // استخدام قاعدة البيانات المحلية
-            const question = getRandomQuestion();
-            gameState.currentQuestion = question;
-            
-            setTimeout(() => {
-                elements.emojiDisplay.textContent = shuffleEmoji(question.emoji);
-            }, 500);
-        }
-
-        async function generateQuestionWithAPI() {
-            const difficultyPrompts = {
-                easy: 'مثل عربي شعبي بسيط ومعروف جداً',
-                medium: 'مثل أو حكمة عربية متوسطة الصعوبة',
-                hard: 'حكمة عربية قديمة أو بيت شعر عربي أو آية قرآنية'
-            };
-
-            try {
-                const response = await fetch("https://api.anthropic.com/v1/messages", {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify({
-                        model: "claude-sonnet-4-20250514",
-                        max_tokens: 1000,
-                        messages: [
-                            {
-                                role: "user",
-                                content: `أنت مساعد للعبة تخمين الأمثال من الرموز التعبيرية. أنشئ ${difficultyPrompts[gameState.difficulty]}.
-
-أرجع الإجابة بصيغة JSON فقط بدون أي نص إضافي:
-{
-    "emoji": "رموز تعبيرية تمثل المثل (3-6 رموز)",
-    "answer": "المثل أو الحكمة الكاملة",
-    "hints": ["تلميح أول", "تلميح ثاني", "تلميح ثالث"]
-}
-
-لا تكرر هذه الأمثال: ${gameState.usedQuestions.slice(-10).map(i => questionsDB[gameState.difficulty][i]?.answer).filter(Boolean).join('، ')}`
-                            }
-                        ]
-                    })
-                });
-
-                const data = await response.json();
-                const text = data.content.map(item => item.text || "").join("\n");
-                const clean = text.replace(/```json|```/g, "").trim();
-                return JSON.parse(clean);
-            } catch (error) {
-                console.error('API Error:', error);
-                return null;
-            }
-        }
-
-        // ========== منطق اللعبة ==========
-        function startGame() {
-            playSound('start');
-            gameState = {
-                ...gameState,
-                score: 0,
-                lives: 3,
-                level: 1,
-                correctAnswers: 0,
-                currentQuestion: null,
-                hintsUsed: 0,
-                hintsRemaining: 3,
-                usedQuestions: []
-            };
-            
-            updateUI();
-            showScreen('gameScreen');
-            loadQuestion();
-        }
-
-        function submitAnswer() {
-            const answer = elements.answerInput.value.trim();
-            if (!answer || !gameState.currentQuestion) return;
-
-            playSound('click');
-
-            if (checkAnswer(answer, gameState.currentQuestion.answer)) {
-                // إجابة صحيحة
-                playSound('correct');
-                elements.answerInput.classList.add('correct');
-                
-                // حساب النقاط
-                const basePoints = { easy: 10, medium: 20, hard: 30 }[gameState.difficulty];
-                const hintPenalty = gameState.hintsUsed * 3;
-                const points = Math.max(basePoints - hintPenalty, 5);
-                
-                gameState.score += points;
-                gameState.correctAnswers++;
-                
-                // التحقق من الانتقال للمستوى التالي
-                if (gameState.correctAnswers % 5 === 0) {
-                    gameState.level++;
-                    playSound('levelup');
-                    showToast(`🎉 أحسنت! انتقلت للمستوى ${gameState.level}`);
-                } else {
-                    showToast(`+${points} نقطة`);
-                }
-                
-                updateUI();
-                
-                setTimeout(() => {
-                    elements.answerInput.classList.remove('correct');
-                    loadQuestion();
-                }, 1000);
-            } else {
-                // إجابة خاطئة
-                playSound('wrong');
-                elements.answerInput.classList.add('wrong');
-                gameState.lives--;
-                updateUI();
-                
-                if (gameState.lives <= 0) {
-                    setTimeout(() => endGame(), 500);
-                } else {
-                    showToast(`❌ حاول مرة أخرى! الإجابة: ${gameState.currentQuestion.answer}`);
-                    setTimeout(() => {
-                        elements.answerInput.classList.remove('wrong');
-                        elements.answerInput.value = '';
-                        loadQuestion();
-                    }, 2000);
-                }
-            }
-        }
-
-        function showHint() {
-            if (gameState.hintsRemaining <= 0 || !gameState.currentQuestion) return;
-            
-            playSound('hint');
-            const hint = gameState.currentQuestion.hints[gameState.hintsUsed];
-            gameState.hintsUsed++;
-            gameState.hintsRemaining--;
-            
-            elements.hintDisplay.textContent = `💡 ${hint}`;
-            elements.hintDisplay.style.display = 'block';
-            elements.hintCount.textContent = gameState.hintsRemaining;
-            
-            if (gameState.hintsRemaining <= 0) {
-                elements.hintBtn.disabled = true;
-            }
-        }
-
-        function skipQuestion() {
-            playSound('click');
-            gameState.lives--;
-            updateUI();
-            
-            if (gameState.lives <= 0) {
-                endGame();
-            } else {
-                showToast(`تخطي! الإجابة كانت: ${gameState.currentQuestion.answer}`);
-                setTimeout(() => loadQuestion(), 1500);
-            }
-        }
-
-        function endGame() {
-            playSound('gameover');
-            
-            const isNewHighScore = gameState.score > gameState.highScore;
-            if (isNewHighScore) {
-                gameState.highScore = gameState.score;
-                localStorage.setItem('emojiCharades_highScore', gameState.score);
-                playSound('highscore');
-                triggerConfetti();
-            }
-            
-            elements.finalScore.textContent = gameState.score;
-            elements.correctAnswers.textContent = gameState.correctAnswers;
-            elements.highestLevel.textContent = gameState.level;
-            elements.highscoreBadge.style.display = isNewHighScore ? 'inline-block' : 'none';
-            
-            if (gameState.score >= 100) {
-                elements.gameoverEmoji.textContent = '🏆';
-                elements.gameoverSubtitle.textContent = 'أداء مذهل! أنت بطل حقيقي!';
-            } else if (gameState.score >= 50) {
-                elements.gameoverEmoji.textContent = '🌟';
-                elements.gameoverSubtitle.textContent = 'عمل رائع! استمر في التحسن!';
-            } else {
-                elements.gameoverEmoji.textContent = '💪';
-                elements.gameoverSubtitle.textContent = 'لا تستسلم! حاول مرة أخرى!';
-            }
-            
-            showScreen('gameoverScreen');
-        }
-
-        function shareScore() {
-            const text = `🎭 لعبة تمثيل الرموز التعبيرية\n\n🏆 حققت ${gameState.score} نقطة!\n✅ ${gameState.correctAnswers} إجابة صحيحة\n📊 المستوى ${gameState.level}\n\nهل تستطيع التغلب على نتيجتي؟`;
-            
-            if (navigator.share) {
-                navigator.share({
-                    title: 'لعبة تمثيل الرموز التعبيرية',
-                    text: text
-                });
-            } else {
-                navigator.clipboard.writeText(text);
-                showToast('تم نسخ النتيجة!');
-            }
-        }
-
-        // ========== تأثير الكونفيتي ==========
-        function triggerConfetti() {
-            const canvas = document.getElementById('confetti-canvas');
-            const ctx = canvas.getContext('2d');
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-            
-            const particles = [];
-            const colors = ['#FACC15', '#EAB308', '#FEF08A', '#22C55E', '#3B82F6', '#EC4899'];
-            
-            for (let i = 0; i < 150; i++) {
-                particles.push({
-                    x: Math.random() * canvas.width,
-                    y: Math.random() * canvas.height - canvas.height,
-                    size: Math.random() * 8 + 4,
-                    color: colors[Math.floor(Math.random() * colors.length)],
-                    speedX: Math.random() * 4 - 2,
-                    speedY: Math.random() * 4 + 2,
-                    rotation: Math.random() * 360
-                });
-            }
-            
-            function animate() {
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-                
-                let activeParticles = 0;
-                particles.forEach(p => {
-                    if (p.y < canvas.height) {
-                        activeParticles++;
-                        p.x += p.speedX;
-                        p.y += p.speedY;
-                        p.rotation += 5;
-                        
-                        ctx.save();
-                        ctx.translate(p.x, p.y);
-                        ctx.rotate(p.rotation * Math.PI / 180);
-                        ctx.fillStyle = p.color;
-                        ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
-                        ctx.restore();
-                    }
-                });
-                
-                if (activeParticles > 0) {
-                    requestAnimationFrame(animate);
-                } else {
-                    ctx.clearRect(0, 0, canvas.width, canvas.height);
-                }
-            }
-            
-            animate();
-        }
-
-        // ========== أحداث DOM ==========
-        document.addEventListener('DOMContentLoaded', () => {
-            loadSounds();
-            
-            // اختيار الصعوبة
-            document.querySelectorAll('.difficulty-btn').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    playSound('click');
-                    document.querySelectorAll('.difficulty-btn').forEach(b => b.classList.remove('selected'));
-                    btn.classList.add('selected');
-                    gameState.difficulty = btn.dataset.level;
-                });
-            });
-            
-            // بدء اللعبة
-            elements.playBtn.addEventListener('click', startGame);
-            
-            // إرسال الإجابة
-            elements.submitBtn.addEventListener('click', submitAnswer);
-            elements.answerInput.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') submitAnswer();
-            });
-            
-            // التلميحات
-            elements.hintBtn.addEventListener('click', showHint);
-            
-            // تخطي السؤال
-            elements.skipBtn.addEventListener('click', skipQuestion);
-            
-            // اللعب مرة أخرى
-            elements.playAgainBtn.addEventListener('click', () => {
-                playSound('click');
-                showScreen('startScreen');
-            });
-            
-            // مشاركة النتيجة
-            elements.shareBtn.addEventListener('click', shareScore);
-            
-            // تبديل الصوت
-            elements.soundToggle.addEventListener('click', () => {
-                soundEnabled = !soundEnabled;
-                elements.soundToggle.classList.toggle('muted', !soundEnabled);
-                elements.soundToggle.querySelector('svg').innerHTML = soundEnabled 
-                    ? '<path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>'
-                    : '<path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/>';
-            });
-        });
-    </script>
+    <script type="module" src="js/main.js"></script>
 </body>
 </html>
