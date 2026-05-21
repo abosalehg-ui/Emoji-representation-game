@@ -1,4 +1,4 @@
-const CACHE_NAME = 'emoji-charades-v1';
+const CACHE_NAME = 'image-challenge-v2';
 const CORE_ASSETS = [
     './',
     './index.html',

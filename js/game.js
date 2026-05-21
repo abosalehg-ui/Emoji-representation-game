@@ -9,13 +9,19 @@ import { triggerConfetti } from './confetti.js';
 
 const BASE_POINTS = { easy: 10, medium: 20, hard: 30 };
 
-function shuffleEmoji(emoji) {
-    const arr = [...emoji].filter(c => c.trim());
+function shuffleIcons(icons) {
+    const arr = [...icons];
     for (let i = arr.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [arr[i], arr[j]] = [arr[j], arr[i]];
     }
-    return arr.join(' ');
+    return arr;
+}
+
+function renderIcons(icons) {
+    return icons
+        .map(key => `<img src="assets/images/${key}.svg" alt="" class="puzzle-icon" loading="eager" decoding="async">`)
+        .join('');
 }
 
 function pickFromPool(pool) {
@@ -67,7 +73,7 @@ export function loadQuestion() {
     gameState.currentQuestion = question;
 
     setTimeout(() => {
-        elements.emojiDisplay.textContent = shuffleEmoji(question.emoji);
+        elements.emojiDisplay.innerHTML = renderIcons(shuffleIcons(question.icons));
         if (gameState.timerEnabled && gameState.mode !== 'daily') {
             const diff = question._diff || gameState.difficulty;
             startTimer(diff);
@@ -143,12 +149,12 @@ export function submitAnswer() {
         gameState.score += points;
         gameState.correctAnswers++;
 
-        if (gameState.streak === 3) showToast('🔥 سلسلة من 3! نقاط مضاعفة');
-        else if (gameState.streak === 5) showToast('🔥🔥 سلسلة من 5! نقاط مضاعفة x2');
+        if (gameState.streak === 3) showToast('سلسلة من 3! نقاط مضاعفة');
+        else if (gameState.streak === 5) showToast('سلسلة من 5! نقاط مضاعفة x2');
         else if (gameState.correctAnswers % 5 === 0 && gameState.mode !== 'daily') {
             gameState.level++;
             playSound('levelup');
-            showToast(`🎉 أحسنت! انتقلت للمستوى ${gameState.level}`);
+            showToast(`أحسنت! انتقلت للمستوى ${gameState.level}`);
         } else {
             showToast(`+${points} نقطة`);
         }
@@ -169,7 +175,7 @@ export function submitAnswer() {
         if (gameState.lives <= 0) {
             setTimeout(() => endGame(), 600);
         } else {
-            showToast(`❌ حاول مرة أخرى! الإجابة: ${gameState.currentQuestion.answer}`);
+            showToast(`حاول مرة أخرى! الإجابة: ${gameState.currentQuestion.answer}`);
             saveSession();
             setTimeout(() => {
                 clearAnswerStyles();
@@ -187,7 +193,7 @@ export function handleTimeout() {
     gameState.streak = 0;
     gameState.lives--;
     updateUI();
-    showToast(`⏰ انتهى الوقت! الإجابة: ${gameState.currentQuestion.answer}`);
+    showToast(`انتهى الوقت! الإجابة: ${gameState.currentQuestion.answer}`);
 
     if (gameState.lives <= 0) {
         setTimeout(() => endGame(), 700);
@@ -208,7 +214,7 @@ export function showHint() {
     gameState.hintsRemaining--;
 
     if (elements.hintDisplay) {
-        elements.hintDisplay.textContent = `💡 ${hint}`;
+        elements.hintDisplay.innerHTML = `<img src="assets/images/lightbulb.svg" alt="" class="ui-icon ui-icon-inline"> ${hint}`;
         elements.hintDisplay.style.display = 'block';
     }
     if (elements.hintCount) elements.hintCount.textContent = gameState.hintsRemaining;
@@ -249,14 +255,18 @@ export function endGame() {
     if (elements.highestLevel)   elements.highestLevel.textContent   = gameState.level;
     if (elements.highscoreBadge) elements.highscoreBadge.style.display = isNewHighScore ? 'inline-block' : 'none';
 
+    const setGameoverIcon = (file) => {
+        if (elements.gameoverIcon) elements.gameoverIcon.src = `assets/images/${file}.svg`;
+    };
+
     if (gameState.score >= 100) {
-        elements.gameoverEmoji.textContent = '🏆';
+        setGameoverIcon('trophy');
         elements.gameoverSubtitle.textContent = 'أداء مذهل! أنت بطل حقيقي!';
     } else if (gameState.score >= 50) {
-        elements.gameoverEmoji.textContent = '🌟';
+        setGameoverIcon('glowing-star');
         elements.gameoverSubtitle.textContent = 'عمل رائع! استمر في التحسن!';
     } else {
-        elements.gameoverEmoji.textContent = '💪';
+        setGameoverIcon('muscle');
         elements.gameoverSubtitle.textContent = 'لا تستسلم! حاول مرة أخرى!';
     }
 
@@ -264,9 +274,9 @@ export function endGame() {
 }
 
 export function shareScore() {
-    const text = `🎭 لعبة تمثيل الرموز التعبيرية\n\n🏆 حققت ${gameState.score} نقطة!\n✅ ${gameState.correctAnswers} إجابة صحيحة\n🔥 أفضل سلسلة: ${gameState.bestStreak}\n📊 المستوى ${gameState.level}\n\nهل تستطيع التغلب على نتيجتي؟`;
+    const text = `🖼️ تحدي الصور\n\n🏆 حققت ${gameState.score} نقطة!\n✅ ${gameState.correctAnswers} إجابة صحيحة\n🔥 أفضل سلسلة: ${gameState.bestStreak}\n📊 المستوى ${gameState.level}\n\nهل تستطيع التغلب على نتيجتي؟`;
     if (navigator.share) {
-        navigator.share({ title: 'لعبة تمثيل الرموز التعبيرية', text }).catch(() => {});
+        navigator.share({ title: 'تحدي الصور', text }).catch(() => {});
     } else if (navigator.clipboard) {
         navigator.clipboard.writeText(text);
         showToast('تم نسخ النتيجة!');

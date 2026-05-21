@@ -9,8 +9,8 @@ const ELEMENT_IDS = [
     'emojiDisplay','hintBtn','hintCount','hintDisplay',
     'answerInput','submitBtn','skipBtn',
     'finalScore','highscoreBadge','correctAnswers','highestLevel',
-    'playAgainBtn','shareBtn','soundToggle','themeToggle',
-    'toast','gameoverEmoji','gameoverSubtitle',
+    'playAgainBtn','shareBtn','soundToggle','themeToggle','themeIcon',
+    'toast','gameoverEmoji','gameoverIcon','gameoverSubtitle',
     'streakBadge','streakCount','timerBar','timerBarFill',
     'resumeBanner','resumeDifficulty','resumeScore','resumeClose',
     'dailyChip','classicChip','dailyDoneBadge',
@@ -46,7 +46,10 @@ export function updateUI() {
     if (elements.livesDisplay) {
         const hearts = elements.livesDisplay.querySelectorAll('.heart');
         hearts.forEach((heart, i) => {
-            heart.classList.toggle('lost', i >= gameState.lives);
+            const lost = i >= gameState.lives;
+            heart.classList.toggle('lost', lost);
+            const img = heart.querySelector('img');
+            if (img) img.src = lost ? 'assets/images/heart-gray.svg' : 'assets/images/heart-red.svg';
         });
     }
 
@@ -83,8 +86,10 @@ export function clearAnswerStyles() {
 export function applyTheme(theme) {
     document.documentElement.setAttribute('data-theme', theme);
     setTheme(theme);
+    if (elements.themeIcon) {
+        elements.themeIcon.src = theme === 'dark' ? 'assets/images/sun.svg' : 'assets/images/moon.svg';
+    }
     if (elements.themeToggle) {
-        elements.themeToggle.textContent = theme === 'dark' ? '☀️' : '🌙';
         elements.themeToggle.setAttribute('aria-label', theme === 'dark' ? 'الوضع الفاتح' : 'الوضع الليلي');
     }
 }
