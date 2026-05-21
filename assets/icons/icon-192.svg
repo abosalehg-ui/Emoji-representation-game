@@ -7,5 +7,13 @@
     </radialGradient>
   </defs>
   <rect width="192" height="192" rx="40" fill="url(#bg)"/>
-  <text x="50%" y="58%" font-size="120" text-anchor="middle" dominant-baseline="middle" font-family="'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji',sans-serif">🎭</text>
+  <g transform="translate(40 50) scale(4.7)" fill="none" stroke="#1E293B" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="2" y="3" width="16" height="13" rx="2" fill="#FFFFFF"/>
+    <circle cx="7" cy="8" r="1.4" fill="#EAB308" stroke="none"/>
+    <polyline points="2 14 7 10 11 12 18 7"/>
+    <path d="M21 6l1.2 2.6 2.8.3-2 2 .6 2.8L21 12.4 18.4 13.7 19 11l-2-2 2.8-.4z" fill="#FACC15" stroke="#1E293B"/>
+  </g>
+  <g transform="translate(56 138)" fill="#1E293B" font-family="'Tajawal','sans-serif'" font-weight="900" font-size="22" text-anchor="middle">
+    <text x="40" y="14">تحدي الصور</text>
+  </g>
 </svg>

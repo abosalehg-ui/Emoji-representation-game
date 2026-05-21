@@ -452,13 +452,18 @@ body::before {
 }
 
 .heart {
-    font-size: 18px;
+    display: inline-flex;
+    align-items: center;
     transition: all 0.3s ease;
 }
 
 .heart.lost {
-    opacity: 0.2;
-    transform: scale(0.8);
+    transform: scale(0.85);
+}
+
+.heart-icon {
+    width: 20px;
+    height: 20px;
 }
 
 /* Streak badge */
@@ -541,17 +546,28 @@ body::before {
 }
 
 .emoji-display {
-    font-size: 48px;
     text-align: center;
     padding: 20px 0;
-    letter-spacing: 8px;
     line-height: 1.4;
     flex: 1;
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     justify-content: center;
+    gap: 14px;
     min-height: 120px;
     transition: transform 0.3s ease;
+}
+
+.puzzle-icon {
+    width: 64px;
+    height: 64px;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.08));
+    transition: transform 0.2s ease;
+}
+
+[data-theme="dark"] .puzzle-icon {
+    filter: invert(1) hue-rotate(180deg) drop-shadow(0 2px 4px rgba(0,0,0,0.4));
 }
 
 .emoji-display.correct-anim {
@@ -567,6 +583,114 @@ body::before {
     30% { transform: scale(1.2); }
     60% { transform: scale(0.95); }
     100% { transform: scale(1); }
+}
+
+/* Generic UI icon (SVG <img>) sized like emoji */
+.ui-icon {
+    width: 1em;
+    height: 1em;
+    display: inline-block;
+    vertical-align: middle;
+}
+
+[data-theme="dark"] .ui-icon:not(.no-invert) {
+    filter: invert(1) hue-rotate(180deg);
+}
+
+.ui-icon-inline {
+    width: 1.1em;
+    height: 1.1em;
+    vertical-align: -0.2em;
+}
+
+/* Top-corner theme toggle icon */
+#themeToggle .ui-icon {
+    width: 20px;
+    height: 20px;
+}
+
+/* Logo on start screen */
+.logo-svg {
+    width: 80px;
+    height: 80px;
+    color: var(--primary-dark);
+    filter: drop-shadow(0 4px 12px rgba(250, 204, 21, 0.4));
+}
+
+/* Mode chip icons */
+.mode-chip-icon .ui-icon {
+    width: 22px;
+    height: 22px;
+}
+
+/* Difficulty button icons */
+.difficulty-btn span .ui-icon {
+    width: 22px;
+    height: 22px;
+}
+
+/* Category icons */
+.category-icon-wrap {
+    display: inline-block;
+}
+.category-icon {
+    width: 22px;
+    height: 22px;
+    color: var(--text-dark);
+}
+
+/* Lives hearts as SVG handled via .heart-icon + JS src swap */
+
+/* Streak icon */
+.streak-icon {
+    width: 14px;
+    height: 14px;
+    color: #FEF08A;
+}
+
+/* Resume banner icon */
+.resume-banner-icon .ui-icon {
+    width: 28px;
+    height: 28px;
+    color: var(--text-dark);
+}
+
+/* Hint button icon */
+.hint-btn .ui-icon {
+    width: 16px;
+    height: 16px;
+}
+
+/* Gameover icon */
+.gameover-svg {
+    width: 84px;
+    height: 84px;
+    color: var(--primary-dark);
+    filter: drop-shadow(0 6px 16px rgba(0,0,0,0.15));
+}
+
+/* Action buttons (play again, share) icons */
+.action-btn .ui-icon {
+    width: 18px;
+    height: 18px;
+}
+
+/* Install button icon */
+.install-btn .ui-icon {
+    width: 14px;
+    height: 14px;
+}
+
+/* Highscore badge trophy */
+.highscore-badge .ui-icon {
+    width: 14px;
+    height: 14px;
+}
+
+/* Timer toggle icon */
+#timerToggle .ui-icon {
+    width: 16px;
+    height: 16px;
 }
 
 /* Hint Section */

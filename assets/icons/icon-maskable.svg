@@ -1,4 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
   <rect width="512" height="512" fill="#FACC15"/>
-  <text x="50%" y="56%" font-size="240" text-anchor="middle" dominant-baseline="middle" font-family="'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji',sans-serif">🎭</text>
+  <g transform="translate(146 156) scale(11)" fill="none" stroke="#1E293B" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="2" y="3" width="16" height="13" rx="2" fill="#FFFFFF"/>
+    <circle cx="7" cy="8" r="1.4" fill="#EAB308" stroke="none"/>
+    <polyline points="2 14 7 10 11 12 18 7"/>
+    <path d="M21 6l1.2 2.6 2.8.3-2 2 .6 2.8L21 12.4 18.4 13.7 19 11l-2-2 2.8-.4z" fill="#FACC15" stroke="#1E293B"/>
+  </g>
 </svg>

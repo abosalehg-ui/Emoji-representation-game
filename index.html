@@ -4,14 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#FACC15">
-    <meta name="description" content="لعبة عربية لتخمين الأمثال والحكم من الرموز التعبيرية - مع تحدي يومي، فئات، ووضع ليلي">
+    <meta name="description" content="تحدي الصور - لعبة عربية: فكّ رموز الصور لتكتشف الأمثال والحكم والإسلاميات والشعر">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <meta name="apple-mobile-web-app-title" content="إيموجي شاراد">
+    <meta name="apple-mobile-web-app-title" content="تحدي الصور">
     <link rel="manifest" href="manifest.json">
     <link rel="icon" type="image/svg+xml" href="assets/icons/icon-192.svg">
     <link rel="apple-touch-icon" href="assets/icons/icon-192.svg">
-    <title>لعبة تمثيل الرموز التعبيرية</title>
+    <title>تحدي الصور</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
@@ -22,7 +22,9 @@
         <button class="icon-btn" id="soundToggle" title="تشغيل/إيقاف الصوت" aria-label="تشغيل أو إيقاف الصوت">
             <svg viewBox="0 0 24 24" id="soundIcon"></svg>
         </button>
-        <button class="icon-btn" id="themeToggle" title="الوضع الليلي" aria-label="الوضع الليلي">🌙</button>
+        <button class="icon-btn" id="themeToggle" title="الوضع الليلي" aria-label="الوضع الليلي">
+            <img id="themeIcon" src="assets/images/moon.svg" alt="" class="ui-icon">
+        </button>
     </div>
 
     <canvas id="confetti-canvas"></canvas>
@@ -32,13 +34,13 @@
         <!-- Start Screen -->
         <div class="screen active" id="startScreen">
             <div class="logo-section">
-                <div class="logo-emoji">🎭</div>
-                <h1 class="game-title">لعبة تمثيل الرموز التعبيرية</h1>
-                <p class="game-subtitle">فكّ رموز الإيموجي لتكتشف الأمثال والحكم</p>
+                <div class="logo-emoji"><img src="assets/images/logo-color.svg" alt="تحدي الصور" class="logo-svg no-invert"></div>
+                <h1 class="game-title">تحدي الصور</h1>
+                <p class="game-subtitle">فكّ رموز الصور لتكتشف الأمثال والحكم والإسلاميات والشعر</p>
             </div>
 
             <div class="resume-banner" id="resumeBanner" style="display: none;">
-                <span class="resume-banner-icon">▶️</span>
+                <span class="resume-banner-icon"><img src="assets/images/play.svg" alt="" class="ui-icon"></span>
                 <div class="resume-banner-text">
                     <span class="resume-banner-title">استكمال اللعبة السابقة</span>
                     <span class="resume-banner-subtitle">
@@ -51,11 +53,11 @@
             <h3 class="section-title">اختر النمط</h3>
             <div class="mode-row">
                 <button class="mode-chip" id="classicChip" type="button">
-                    <span class="mode-chip-icon">🎯</span>
+                    <span class="mode-chip-icon"><img src="assets/images/classic-icon.svg" alt="" class="ui-icon"></span>
                     <span class="mode-chip-label">كلاسيكي</span>
                 </button>
                 <button class="mode-chip" id="dailyChip" type="button">
-                    <span class="mode-chip-icon">🌅</span>
+                    <span class="mode-chip-icon"><img src="assets/images/sunrise.svg" alt="" class="ui-icon"></span>
                     <span class="mode-chip-label">
                         <span class="mode-chip-badge" id="dailyDoneBadge" style="display:none;">✓</span>
                         تحدي اليوم
@@ -66,15 +68,15 @@
             <h3 class="section-title">مستوى الصعوبة</h3>
             <div class="difficulty-options">
                 <button class="difficulty-btn" data-level="easy" type="button">
-                    <span>🌱</span>
+                    <span><img src="assets/images/easy-icon.svg" alt="" class="ui-icon"></span>
                     <p>سهل</p>
                 </button>
                 <button class="difficulty-btn selected" data-level="medium" type="button">
-                    <span>🔥</span>
+                    <span><img src="assets/images/medium-icon.svg" alt="" class="ui-icon"></span>
                     <p>متوسط</p>
                 </button>
                 <button class="difficulty-btn" data-level="hard" type="button">
-                    <span>💀</span>
+                    <span><img src="assets/images/hard-icon.svg" alt="" class="ui-icon"></span>
                     <p>صعب</p>
                 </button>
             </div>
@@ -83,7 +85,10 @@
             <div class="category-grid" id="categoryGrid"></div>
 
             <div class="toggle-row">
-                <button class="toggle-btn" id="timerToggle" type="button">⏱️ تشغيل المؤقت</button>
+                <button class="toggle-btn" id="timerToggle" type="button">
+                    <img src="assets/images/timer-icon.svg" alt="" class="ui-icon ui-icon-inline">
+                    تشغيل المؤقت
+                </button>
             </div>
 
             <button class="play-btn" id="playBtn" aria-label="ابدأ اللعب">
@@ -92,11 +97,14 @@
                 </svg>
             </button>
 
-            <button class="install-btn" id="installBtn" type="button">📲 ثبّت اللعبة</button>
+            <button class="install-btn" id="installBtn" type="button">
+                <img src="assets/images/install-app.svg" alt="" class="ui-icon ui-icon-inline">
+                ثبّت اللعبة
+            </button>
 
             <div class="footer">
                 <p>تطوير: عبدالكريم العبود | <a href="mailto:abo.saleh.g@gmail.com">abo.saleh.g@gmail.com</a></p>
-                <p>© 2026 Emoji representation game - All Rights Reserved</p>
+                <p>© 2026 تحدي الصور - All Rights Reserved</p>
             </div>
         </div>
 
@@ -111,15 +119,16 @@
                 <div class="stat-box">
                     <div class="stat-label">الحياة</div>
                     <div class="lives-display" id="livesDisplay">
-                        <span class="heart">❤️</span>
-                        <span class="heart">❤️</span>
-                        <span class="heart">❤️</span>
+                        <span class="heart"><img src="assets/images/heart-red.svg" alt="" class="ui-icon no-invert heart-icon"></span>
+                        <span class="heart"><img src="assets/images/heart-red.svg" alt="" class="ui-icon no-invert heart-icon"></span>
+                        <span class="heart"><img src="assets/images/heart-red.svg" alt="" class="ui-icon no-invert heart-icon"></span>
                     </div>
                 </div>
             </div>
 
             <div class="streak-badge" id="streakBadge">
-                🔥 <span id="streakCount">0</span>
+                <img src="assets/images/fire-orange.svg" alt="" class="ui-icon ui-icon-inline streak-icon no-invert">
+                <span id="streakCount">0</span>
             </div>
 
             <div class="timer-bar" id="timerBar">
@@ -137,7 +146,7 @@
 
                 <div class="hint-section">
                     <button class="hint-btn" id="hintBtn" type="button">
-                        <span>💡</span>
+                        <span><img src="assets/images/lightbulb.svg" alt="" class="ui-icon ui-icon-inline"></span>
                         <span>اظهر تلميح</span>
                         <span class="hint-count" id="hintCount">3</span>
                     </button>
@@ -160,14 +169,17 @@
         <!-- Game Over Screen -->
         <div class="screen" id="gameoverScreen">
             <div class="gameover-content">
-                <div class="gameover-emoji" id="gameoverEmoji">😢</div>
+                <div class="gameover-emoji" id="gameoverEmoji"><img id="gameoverIcon" src="assets/images/cry.svg" alt="" class="gameover-svg"></div>
                 <h2 class="gameover-title">انتهت اللعبة!</h2>
                 <p class="gameover-subtitle" id="gameoverSubtitle">أحسنت! لقد بذلت جهداً رائعاً</p>
 
                 <div class="final-score">
                     <div class="final-score-value" id="finalScore">0</div>
                     <div class="final-score-label">نقطة</div>
-                    <div class="highscore-badge" id="highscoreBadge" style="display: none;">🏆 رقم قياسي جديد!</div>
+                    <div class="highscore-badge" id="highscoreBadge" style="display: none;">
+                        <img src="assets/images/trophy.svg" alt="" class="ui-icon ui-icon-inline">
+                        رقم قياسي جديد!
+                    </div>
                 </div>
 
                 <div class="stats-row">
@@ -182,18 +194,18 @@
                 </div>
 
                 <button class="action-btn primary" id="playAgainBtn" type="button">
-                    <span>🔄</span>
+                    <span><img src="assets/images/refresh.svg" alt="" class="ui-icon ui-icon-inline"></span>
                     العب مرة أخرى
                 </button>
                 <button class="action-btn secondary" id="shareBtn" type="button">
-                    <span>📤</span>
+                    <span><img src="assets/images/share-arrow.svg" alt="" class="ui-icon ui-icon-inline"></span>
                     شارك نتيجتك
                 </button>
             </div>
 
             <div class="footer">
                 <p>تطوير: عبدالكريم العبود | <a href="mailto:abo.saleh.g@gmail.com">abo.saleh.g@gmail.com</a></p>
-                <p>© 2026 Emoji representation game - All Rights Reserved</p>
+                <p>© 2026 تحدي الصور - All Rights Reserved</p>
             </div>
         </div>
     </div>

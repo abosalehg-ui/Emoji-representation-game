@@ -13,7 +13,7 @@ function buildCategoryGrid() {
     if (!elements.categoryGrid) return;
     elements.categoryGrid.innerHTML = CATEGORIES.map(c => `
         <button class="category-btn ${c.id === 'all' ? 'selected' : ''}" data-category="${c.id}" type="button">
-            <span>${c.icon}</span>
+            <span class="category-icon-wrap"><img src="assets/images/${c.icon}.svg" alt="" class="category-icon"></span>
             <p>${c.label}</p>
         </button>
     `).join('');
@@ -85,7 +85,7 @@ function setupModeChips() {
     if (elements.dailyChip) {
         elements.dailyChip.addEventListener('click', () => {
             if (isDailyCompletedToday(todayKey())) {
-                showToast('💪 لقد أكملت تحدي اليوم! عُد غداً لتحدي جديد');
+                showToast('لقد أكملت تحدي اليوم! عُد غداً لتحدي جديد');
                 return;
             }
             playSound('click');

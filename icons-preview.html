@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>معاينة مكتبة الأيقونات</title>
+<style>
+  body { font-family: system-ui, sans-serif; background: #F1F5F9; color: #1E293B; padding: 20px; }
+  h1 { text-align: center; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 12px; max-width: 1200px; margin: 0 auto; }
+  .cell { background: white; border-radius: 12px; padding: 12px; text-align: center; box-shadow: 0 2px 6px rgba(0,0,0,0.06); }
+  .cell img { width: 56px; height: 56px; display: block; margin: 0 auto 6px; }
+  .cell span { font-size: 11px; color: #475569; word-break: break-all; }
+  .dark { background: #0F172A; color: #F8FAFC; }
+  .dark .cell { background: #1E293B; }
+  .dark .cell span { color: #94A3B8; }
+  .dark .cell img:not(.no-invert) { filter: invert(1) hue-rotate(180deg); }
+  .toggle { position: fixed; top: 10px; left: 10px; padding: 10px 18px; cursor: pointer; }
+</style>
+</head>
+<body>
+<button class="toggle" onclick="document.body.classList.toggle('dark')">تبديل الوضع</button>
+<h1>معاينة مكتبة أيقونات "تحدي الصور"</h1>
+<div class="grid" id="grid"></div>
+<script type="module">
+const list = [
+  // Islamic
+  'mosque','kaaba','quran','prayer-beads','crescent-star','minaret','crescent-moon',
+  // Bedouin heritage
+  'arabic-sword','bedouin-tent','arabic-coffee-pot','agal-headband','arabic-headscarf','turban','arabic-flag','camel-loaded','palm-tree','falcon','oud-instrument',
+  // Animals
+  'apple','tree','bird','dog','horse','horse-running','chicken','rooster','egg','sheep','lion','wolf','snake','turtle','elephant','ant','fish','fox','butterfly','tooth','oyster','camel','wing',
+  // Nature
+  'sunrise','mountain-sunrise','sun','moon','star','glowing-star','rainbow','umbrella-rain','rain','cloud','wave','water-drop','fire','wind','rose','leaf','fallen-leaf','snowflake','rock','desert','mountain','tornado','wheat','grapes','wood-log','seedling',
+  // Objects
+  'key','heart','heart-red','heart-gray','hearts','anatomical-heart','broken-heart','gold-medal','clock','hourglass','money-bag','books','open-book','scroll','sword','crossed-swords','shield','bow-arrow','target','pill','diamond','mirror','door','hammer','axe','flashlight','lantern','coin','sparkles','milk','fried-egg','cooking-pan','scales','sailboat','ship','compass','nest','castle','brick','crown','skull','headstone','theater-masks','circus-tent','globe','crystal-ball','writing-hand','blood-drop','meat','luggage','railway','bed','broom','plate','house','cup','airplane','paper-plane','thought-bubble','calligraphy','landmark','bread','bone',
+  // People
+  'hand','wave-hand','ear','mouth','eye','eyes','muscle','brain','smile','handshake','cry','shush','open-hands','walking','running','swimmer','farmer','pilot','elderly','doctor','baby','hijab-woman','turban-man','man','silhouette','silhouettes','father-son','angry','dizzy','relieved','anxious','sweat','thought','nose',
+  // Symbols / UI
+  'x-mark','check-mark','warning','refresh','magnifier','telescope','skull-crossbones','prohibited','play','arrow-left','arrow-up','arrow-down','arrow-right','lightbulb','trophy',
+  // Category & UI helpers
+  'religion-icon','poetry-icon','proverbs-icon','wisdom-icon','all-icon','easy-icon','medium-icon','hard-icon','timer-icon','classic-icon','share-arrow','download-arrow','install-app','logo-color','logo-challenge','fire-orange'
+];
+const grid = document.getElementById('grid');
+const noInvert = new Set(['heart-red','fire-orange','logo-color']);
+for (const k of list) {
+  grid.insertAdjacentHTML('beforeend',
+    `<div class="cell"><img src="assets/images/${k}.svg" alt="" ${noInvert.has(k)?'class="no-invert"':''}><span>${k}</span></div>`);
+}
+</script>
+</body>
+</html>
