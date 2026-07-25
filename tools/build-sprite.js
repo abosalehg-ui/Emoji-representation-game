@@ -11,11 +11,13 @@
  * التشغيل: node tools/build-sprite.js
  */
 
-const fs = require('fs');
-const path = require('path');
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const SRC = path.join(__dirname, '..', 'assets', 'images');
-const OUT = path.join(__dirname, '..', 'assets', 'sprite.svg');
+const here = path.dirname(fileURLToPath(import.meta.url));
+const SRC = path.join(here, '..', 'assets', 'images');
+const OUT = path.join(here, '..', 'assets', 'sprite.svg');
 
 /**
  * أيقونات كانت تحمل ألواناً مثبتة تمنع التحكم بها من CSS.
