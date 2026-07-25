@@ -1,110 +1,269 @@
-import { CATEGORIES } from './questions.js';
-import { gameState, loadSession, clearSession, restoreSession, isDailyCompletedToday } from './state.js';
+import { CATEGORIES, countFor, isCategoryPlayable, MIN_POOL, totalQuestions } from './questions.js';
+import {
+    gameState, loadSession, clearSession, restoreSession,
+    isDailyCompletedToday, loadDailyState, hasSeenIntro
+} from './state.js';
+import { isPersistent } from './storage.js';
 import { todayKey } from './daily.js';
-import { loadSounds, playSound, isSoundEnabled, toggleSound } from './sounds.js';
-import { cacheElements, elements, showScreen, showToast, updateUI, initTheme, toggleTheme } from './ui.js';
+import { loadSounds, playSound, isSoundEnabled, toggleSound, getVolume, setVolume } from './sounds.js';
+import {
+    cacheElements, elements, showScreen, showToast,
+    initTheme, toggleTheme, setInputLocked
+} from './ui.js';
+import { loadSprite, iconMarkup, setIcon } from './icons.js';
 import { initTimer, hideTimer } from './timer.js';
-import { startGame, resumeGame, submitAnswer, showHint, skipQuestion, shareScore, handleTimeout } from './game.js';
+import {
+    startGame, resumeGame, resumeDaily, submitAnswer, showHint, skipQuestion,
+    shareScore, handleTimeout, lastRoundOptions
+} from './game.js';
+import { journalEntries, solvedCount } from './journal.js';
+import { showIntro, submitIntro, skipIntro } from './tutorial.js';
 
-const SOUND_ON_SVG  = '<path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>';
-const SOUND_OFF_SVG = '<path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/>';
+const DIFFICULTY_LABELS = { easy: 'سهل', medium: 'متوسط', hard: 'صعب' };
+
+/* ------------------------------------------------------------------ */
+/* الفئات                                                              */
+/* ------------------------------------------------------------------ */
 
 function buildCategoryGrid() {
     if (!elements.categoryGrid) return;
+
     elements.categoryGrid.innerHTML = CATEGORIES.map(c => `
-        <button class="category-btn ${c.id === 'all' ? 'selected' : ''}" data-category="${c.id}" type="button">
-            <span class="category-icon-wrap"><img src="assets/images/${c.icon}.svg" alt="" class="category-icon"></span>
+        <button class="category-btn" data-category="${c.id}" type="button">
+            <span class="category-icon-wrap">${iconMarkup(c.icon, 'category-icon')}</span>
             <p>${c.label}</p>
+            <span class="category-count"></span>
         </button>
     `).join('');
 
     elements.categoryGrid.querySelectorAll('.category-btn').forEach(btn => {
         btn.addEventListener('click', () => {
+            if (btn.disabled) return;
             playSound('click');
-            elements.categoryGrid.querySelectorAll('.category-btn').forEach(b => b.classList.remove('selected'));
-            btn.classList.add('selected');
-            gameState.category = btn.dataset.category;
+            selectCategory(btn.dataset.category);
         });
+    });
+
+    refreshCategoryAvailability();
+}
+
+function selectCategory(id) {
+    gameState.category = id;
+    elements.categoryGrid?.querySelectorAll('.category-btn').forEach(b => {
+        b.classList.toggle('selected', b.dataset.category === id);
+        b.setAttribute('aria-pressed', String(b.dataset.category === id));
     });
 }
 
-function refreshDailyDoneBadge() {
-    if (!elements.dailyDoneBadge) return;
-    if (isDailyCompletedToday(todayKey())) {
-        elements.dailyDoneBadge.style.display = 'inline-block';
-        elements.dailyChip?.classList.add('done');
-    } else {
-        elements.dailyDoneBadge.style.display = 'none';
-        elements.dailyChip?.classList.remove('done');
+/**
+ * يعطّل الفئات التي لا تملك أسئلة كافية للصعوبة الحالية ويعرض العدد.
+ *
+ * سابقاً كان اختيار «شعر + سهل» يمر بصمت ثم تعود اللعبة إلى المجموعة الكاملة،
+ * فيحصل اللاعب على أمثال وحكم بدل الشعر دون أي إشعار.
+ */
+function refreshCategoryAvailability() {
+    if (!elements.categoryGrid) return;
+    const diff = gameState.difficulty;
+    let currentStillValid = false;
+
+    elements.categoryGrid.querySelectorAll('.category-btn').forEach(btn => {
+        const id = btn.dataset.category;
+        const n = id === 'all'
+            ? countFor(diff, 'all')
+            : countFor(diff, id);
+        const playable = id === 'all' || isCategoryPlayable(diff, id);
+
+        btn.disabled = !playable;
+        btn.classList.toggle('unavailable', !playable);
+        btn.title = playable
+            ? `${n} لغزاً على مستوى ${DIFFICULTY_LABELS[diff]}`
+            : `تحتاج ${MIN_POOL} ألغاز على الأقل — متاح ${n} فقط على مستوى ${DIFFICULTY_LABELS[diff]}`;
+
+        const count = btn.querySelector('.category-count');
+        if (count) count.textContent = n;
+
+        if (id === gameState.category && playable) currentStillValid = true;
+    });
+
+    if (!currentStillValid) selectCategory('all');
+    else selectCategory(gameState.category);
+}
+
+/* ------------------------------------------------------------------ */
+/* الشاشة الأولى                                                       */
+/* ------------------------------------------------------------------ */
+
+function refreshDailyChip() {
+    const done = isDailyCompletedToday(todayKey());
+    const resumable = !!loadDailyState(todayKey());
+
+    if (elements.dailyDoneBadge) elements.dailyDoneBadge.hidden = !done || resumable;
+    elements.dailyChip?.classList.toggle('done', done && !resumable);
+    if (elements.dailyChip) {
+        elements.dailyChip.dataset.resumable = String(resumable);
     }
 }
 
 function maybeShowResumeBanner() {
     if (!elements.resumeBanner) return;
+
     const saved = loadSession();
-    if (saved && saved.lives > 0 && saved.mode === 'classic') {
-        elements.resumeBanner.style.display = 'flex';
-        if (elements.resumeDifficulty) elements.resumeDifficulty.textContent = ({
-            easy: 'سهل', medium: 'متوسط', hard: 'صعب'
-        })[saved.difficulty] || '';
-        if (elements.resumeScore) elements.resumeScore.textContent = saved.score;
-
-        elements.resumeBanner.onclick = (e) => {
-            if (e.target.id === 'resumeClose') return;
-            restoreSession(saved);
-            resumeGame();
-        };
-        if (elements.resumeClose) {
-            elements.resumeClose.onclick = (e) => {
-                e.stopPropagation();
-                clearSession();
-                elements.resumeBanner.style.display = 'none';
-            };
-        }
-    } else {
-        elements.resumeBanner.style.display = 'none';
+    if (!saved || saved.mode !== 'classic') {
+        elements.resumeBanner.hidden = true;
+        return;
     }
-}
 
-function setSoundIcon() {
-    if (!elements.soundIcon) return;
-    elements.soundIcon.innerHTML = isSoundEnabled() ? SOUND_ON_SVG : SOUND_OFF_SVG;
-    if (elements.soundToggle) elements.soundToggle.classList.toggle('muted', !isSoundEnabled());
+    elements.resumeBanner.hidden = false;
+    if (elements.resumeDifficulty) {
+        elements.resumeDifficulty.textContent = DIFFICULTY_LABELS[saved.difficulty] || '';
+    }
+    if (elements.resumeScore) elements.resumeScore.textContent = saved.score;
+
+    elements.resumeBanner.onclick = (e) => {
+        if (e.target.closest('#resumeClose')) return;
+        playSound('click');
+        restoreSession(saved);
+        resumeGame();
+    };
+    if (elements.resumeClose) {
+        elements.resumeClose.onclick = (e) => {
+            e.stopPropagation();
+            playSound('click');
+            clearSession();
+            elements.resumeBanner.hidden = true;
+        };
+    }
 }
 
 function setupModeChips() {
-    if (elements.classicChip) {
-        elements.classicChip.classList.add('selected');
-        elements.classicChip.addEventListener('click', () => {
+    const select = (mode) => {
+        gameState.mode = mode;
+        elements.classicChip?.classList.toggle('selected', mode === 'classic');
+        elements.dailyChip?.classList.toggle('selected', mode === 'daily');
+        elements.classicChip?.setAttribute('aria-pressed', String(mode === 'classic'));
+        elements.dailyChip?.setAttribute('aria-pressed', String(mode === 'daily'));
+    };
+
+    elements.classicChip?.addEventListener('click', () => {
+        playSound('click');
+        select('classic');
+    });
+
+    elements.dailyChip?.addEventListener('click', () => {
+        const key = todayKey();
+        if (isDailyCompletedToday(key) && !loadDailyState(key)) {
+            showToast('أكملت تحدي اليوم! عُد غداً لتحدٍ جديد');
+            return;
+        }
+        playSound('click');
+        select('daily');
+    });
+
+    select('classic');
+}
+
+function setupDifficultyButtons() {
+    document.querySelectorAll('.difficulty-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
             playSound('click');
-            elements.classicChip.classList.add('selected');
-            elements.dailyChip?.classList.remove('selected');
-            gameState.mode = 'classic';
+            document.querySelectorAll('.difficulty-btn').forEach(b => {
+                b.classList.remove('selected');
+                b.setAttribute('aria-pressed', 'false');
+            });
+            btn.classList.add('selected');
+            btn.setAttribute('aria-pressed', 'true');
+            gameState.difficulty = btn.dataset.level;
+            refreshCategoryAvailability();
         });
-    }
-    if (elements.dailyChip) {
-        elements.dailyChip.addEventListener('click', () => {
-            if (isDailyCompletedToday(todayKey())) {
-                showToast('لقد أكملت تحدي اليوم! عُد غداً لتحدي جديد');
-                return;
-            }
-            playSound('click');
-            elements.dailyChip.classList.add('selected');
-            elements.classicChip?.classList.remove('selected');
-            gameState.mode = 'daily';
-        });
-    }
+    });
 }
 
 function setupTimerToggle() {
     if (!elements.timerToggle) return;
-    elements.timerToggle.classList.toggle('on', gameState.timerEnabled);
+    const sync = () => {
+        elements.timerToggle.classList.toggle('on', gameState.timerEnabled);
+        elements.timerToggle.setAttribute('aria-pressed', String(gameState.timerEnabled));
+    };
+    sync();
     elements.timerToggle.addEventListener('click', () => {
         playSound('click');
         gameState.timerEnabled = !gameState.timerEnabled;
-        elements.timerToggle.classList.toggle('on', gameState.timerEnabled);
+        sync();
     });
 }
+
+/** الإعدادات المتقدمة خلف زر، فلا تزاحم الهدف في أول شاشة. */
+function setupSettingsDisclosure() {
+    if (!elements.settingsToggle || !elements.settingsPanel) return;
+    const sync = (open) => {
+        elements.settingsPanel.hidden = !open;
+        elements.settingsToggle.setAttribute('aria-expanded', String(open));
+        elements.settingsToggle.classList.toggle('open', open);
+    };
+    // تُفتح تلقائياً لمن جرّب اللعبة من قبل
+    sync(hasSeenIntro());
+    elements.settingsToggle.addEventListener('click', () => {
+        playSound('click');
+        sync(elements.settingsPanel.hidden);
+    });
+}
+
+/* ------------------------------------------------------------------ */
+/* الصوت                                                               */
+/* ------------------------------------------------------------------ */
+
+function setSoundIcon() {
+    if (elements.soundIcon) {
+        setIcon(elements.soundIcon, isSoundEnabled() ? 'sound-on' : 'sound-off', 'ui-icon');
+    }
+    elements.soundToggle?.classList.toggle('muted', !isSoundEnabled());
+    elements.soundToggle?.setAttribute('aria-pressed', String(isSoundEnabled()));
+    if (elements.volumeRow) elements.volumeRow.hidden = !isSoundEnabled();
+}
+
+function setupVolume() {
+    if (!elements.volumeSlider) return;
+    elements.volumeSlider.value = String(Math.round(getVolume() * 100));
+    elements.volumeSlider.addEventListener('input', () => {
+        setVolume(Number(elements.volumeSlider.value) / 100);
+    });
+    elements.volumeSlider.addEventListener('change', () => playSound('click'));
+}
+
+/* ------------------------------------------------------------------ */
+/* دفتر الأمثال                                                        */
+/* ------------------------------------------------------------------ */
+
+function renderJournal() {
+    if (!elements.journalGrid) return;
+
+    const entries = journalEntries();
+    const total = totalQuestions();
+    const found = solvedCount();
+
+    if (elements.journalProgress) {
+        elements.journalProgress.textContent = `${found} من ${total}`;
+    }
+
+    elements.journalGrid.innerHTML = entries.map((e, i) => {
+        if (!e.unlocked) {
+            return `<li class="journal-cell locked" aria-label="لغز ${i + 1}: لم يُكتشف بعد">؟</li>`;
+        }
+        return `<li class="journal-cell unlocked" title="${escapeHtml(e.answer)}">
+            <span class="journal-icons">${e.icons.slice(0, 2).map(n => iconMarkup(n, 'journal-icon')).join('')}</span>
+            <span class="journal-text">${escapeHtml(e.answer)}</span>
+        </li>`;
+    }).join('');
+}
+
+function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, c =>
+        ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+}
+
+/* ------------------------------------------------------------------ */
+/* PWA                                                                 */
+/* ------------------------------------------------------------------ */
 
 function registerServiceWorker() {
     if (!('serviceWorker' in navigator)) return;
@@ -115,11 +274,13 @@ function registerServiceWorker() {
 function setupInstallButton() {
     if (!elements.installBtn) return;
     let deferred = null;
+
     window.addEventListener('beforeinstallprompt', (e) => {
         e.preventDefault();
         deferred = e;
         elements.installBtn.classList.add('visible');
     });
+
     elements.installBtn.addEventListener('click', async () => {
         if (!deferred) return;
         deferred.prompt();
@@ -127,16 +288,51 @@ function setupInstallButton() {
         deferred = null;
         elements.installBtn.classList.remove('visible');
     });
+
     window.addEventListener('appinstalled', () => {
         elements.installBtn.classList.remove('visible');
     });
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+/* ------------------------------------------------------------------ */
+/* الإقلاع                                                             */
+/* ------------------------------------------------------------------ */
+
+function goToStart() {
+    hideTimer();
+    refreshDailyChip();
+    maybeShowResumeBanner();
+    refreshCategoryAvailability();
+    showScreen('startScreen');
+}
+
+function startFromControls() {
+    if (gameState.mode === 'daily') {
+        if (loadDailyState(todayKey())) {
+            if (resumeDaily()) return;
+        }
+        startGame({ mode: 'daily' });
+        return;
+    }
+    startGame({
+        mode: 'classic',
+        difficulty: gameState.difficulty,
+        category: gameState.category,
+        timerEnabled: gameState.timerEnabled
+    });
+}
+
+async function boot() {
     cacheElements();
     initTheme();
     loadSounds();
+
+    // الـsprite قبل بناء أي واجهة: عندها ترسم الأيقونات كـ<use> ويعمل
+    // currentColor. عند الفشل ترجع icons.js تلقائياً إلى <img>.
+    await loadSprite();
+
     setSoundIcon();
+    setupVolume();
 
     initTimer({
         bar: elements.timerBar,
@@ -146,57 +342,90 @@ document.addEventListener('DOMContentLoaded', () => {
 
     buildCategoryGrid();
     setupModeChips();
+    setupDifficultyButtons();
     setupTimerToggle();
-    refreshDailyDoneBadge();
+    setupSettingsDisclosure();
+    refreshDailyChip();
     maybeShowResumeBanner();
     registerServiceWorker();
     setupInstallButton();
 
-    document.querySelectorAll('.difficulty-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            playSound('click');
-            document.querySelectorAll('.difficulty-btn').forEach(b => b.classList.remove('selected'));
-            btn.classList.add('selected');
-            gameState.difficulty = btn.dataset.level;
-        });
-    });
+    if (elements.storageWarning) elements.storageWarning.hidden = isPersistent();
 
-    elements.playBtn?.addEventListener('click', () => {
-        const opts = gameState.mode === 'daily'
-            ? { mode: 'daily' }
-            : {
-                mode: 'classic',
-                difficulty: gameState.difficulty,
-                category: gameState.category,
-                timerEnabled: gameState.timerEnabled
-              };
-        startGame(opts);
-    });
-
+    /* --- أزرار اللعب --- */
+    elements.playBtn?.addEventListener('click', startFromControls);
     elements.submitBtn?.addEventListener('click', submitAnswer);
-    elements.answerInput?.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') submitAnswer();
+
+    // keypress مهجور وسلوكه مع Enter غير موثوق على بعض محررات الإدخال العربية
+    elements.answerInput?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.isComposing) {
+            e.preventDefault();
+            submitAnswer();
+        }
     });
+
     elements.hintBtn?.addEventListener('click', showHint);
     elements.skipBtn?.addEventListener('click', skipQuestion);
 
+    /* --- شاشة النهاية --- */
     elements.playAgainBtn?.addEventListener('click', () => {
         playSound('click');
-        hideTimer();
-        refreshDailyDoneBadge();
-        maybeShowResumeBanner();
-        showScreen('startScreen');
+        // كان يعود إلى شاشة الإعدادات فيعيد اللاعب اختيار كل شيء في كل مرة
+        startGame(lastRoundOptions());
     });
-
+    elements.changeSettingsBtn?.addEventListener('click', () => {
+        playSound('click');
+        goToStart();
+    });
     elements.shareBtn?.addEventListener('click', shareScore);
 
+    /* --- دفتر الأمثال --- */
+    elements.journalBtn?.addEventListener('click', () => {
+        playSound('click');
+        renderJournal();
+        showScreen('journalScreen');
+    });
+    elements.journalCloseBtn?.addEventListener('click', () => {
+        playSound('click');
+        goToStart();
+    });
+
+    /* --- التعريف --- */
+    elements.introSubmit?.addEventListener('click', submitIntro);
+    elements.introInput?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.isComposing) {
+            e.preventDefault();
+            submitIntro();
+        }
+    });
+    elements.introSkip?.addEventListener('click', skipIntro);
+
+    /* --- أزرار عامة --- */
     elements.soundToggle?.addEventListener('click', () => {
         toggleSound();
         setSoundIcon();
+        playSound('click');
     });
-
     elements.themeToggle?.addEventListener('click', () => {
         playSound('click');
         toggleTheme();
     });
-});
+
+    // الهروب يخرج من اللعبة إلى الشاشة الأولى
+    document.addEventListener('keydown', (e) => {
+        if (e.key !== 'Escape') return;
+        if (document.getElementById('journalScreen')?.classList.contains('active')) goToStart();
+    });
+
+    setInputLocked(false);
+
+    if (!hasSeenIntro()) {
+        showIntro(goToStart);
+    }
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', boot);
+} else {
+    boot();
+}

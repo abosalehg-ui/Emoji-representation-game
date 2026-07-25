@@ -1,4 +1,4 @@
-import { questionsDB } from './questions.js';
+import { allQuestions } from './questions.js';
 
 export function todayKey() {
     const d = new Date();
@@ -8,6 +8,7 @@ export function todayKey() {
     return `${y}-${m}-${day}`;
 }
 
+/** مولّد أرقام شبه عشوائي ببذرة ثابتة — نفس اليوم يعطي نفس الأسئلة لكل اللاعبين. */
 function hashSeed(str) {
     let h = 1779033703 ^ str.length;
     for (let i = 0; i < str.length; i++) {
@@ -22,22 +23,22 @@ function hashSeed(str) {
     };
 }
 
-export function getDailyQuestions(count = 10) {
-    const seed = hashSeed(todayKey());
-    const all = [
-        ...questionsDB.easy.map(q => ({ ...q, _diff: 'easy' })),
-        ...questionsDB.medium.map(q => ({ ...q, _diff: 'medium' })),
-        ...questionsDB.hard.map(q => ({ ...q, _diff: 'hard' }))
-    ];
-    const shuffled = [...all];
-    for (let i = shuffled.length - 1; i > 0; i--) {
-        const j = Math.floor(seed() * (i + 1));
-        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+function seededShuffle(arr, rand) {
+    const out = [...arr];
+    for (let i = out.length - 1; i > 0; i--) {
+        const j = Math.floor(rand() * (i + 1));
+        [out[i], out[j]] = [out[j], out[i]];
     }
-    const mix = [];
-    const easyPool = shuffled.filter(q => q._diff === 'easy').slice(0, 4);
-    const medPool = shuffled.filter(q => q._diff === 'medium').slice(0, 4);
-    const hardPool = shuffled.filter(q => q._diff === 'hard').slice(0, 2);
-    mix.push(...easyPool, ...medPool, ...hardPool);
+    return out;
+}
+
+/** خليط ثابت لليوم: 4 سهلة، 4 متوسطة، 2 صعبة — بمنحنى صاعد. */
+export function getDailyQuestions(count = 10) {
+    const rand = hashSeed(todayKey());
+    const shuffled = seededShuffle(allQuestions(), rand);
+
+    const take = (diff, n) => shuffled.filter(q => q._diff === diff).slice(0, n);
+    const mix = [...take('easy', 4), ...take('medium', 4), ...take('hard', 2)];
+
     return mix.slice(0, count);
 }
