@@ -3,6 +3,7 @@ name: Deploy static site to GitHub Pages
 on:
   push:
     branches: [main]
+  pull_request:
   workflow_dispatch:
 
 permissions:
@@ -15,7 +16,33 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      # يمنع انحراف الـsprite عن ملفات SVG المصدرية
+      - name: Verify sprite is up to date
+        run: |
+          node tools/build-sprite.js
+          if ! git diff --quiet -- assets/sprite.svg; then
+            echo "::error::assets/sprite.svg قديم — شغّل: npm run build:sprite"
+            git diff --stat -- assets/sprite.svg
+            exit 1
+          fi
+
+      - name: Run tests
+        run: npm test
+
   deploy:
+    needs: test
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -24,13 +51,22 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # ملفات التطوير لا تُنشر: أداة توليد الأيقونات (41KB) وصفحة المعاينة
+      # والاختبارات كانت تُرفع كلها مع الموقع
+      - name: Prepare artifact
+        run: |
+          mkdir -p _site
+          cp -r assets css js index.html manifest.json sw.js .nojekyll _site/
+          echo "حجم ما سيُنشر:"
+          du -sh _site
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: '.'
+          path: '_site'
 
       - name: Deploy to GitHub Pages
         id: deployment

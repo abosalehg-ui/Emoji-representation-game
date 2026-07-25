@@ -2,7 +2,8 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <!-- لا maximum-scale ولا user-scalable=no: منع التكبير مخالفة WCAG 1.4.4 -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="theme-color" content="#FACC15">
     <meta name="description" content="تحدي الصور - لعبة عربية: فكّ رموز الصور لتكتشف الأمثال والحكم والإسلاميات والشعر">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -12,93 +13,149 @@
     <link rel="icon" type="image/svg+xml" href="assets/icons/icon-192.svg">
     <link rel="apple-touch-icon" href="assets/icons/icon-192.svg">
     <title>تحدي الصور</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+    <!-- الخط مستضاف ذاتياً: لا اعتماد على شبكة خارجية، ويعمل أوفلاين -->
+    <link rel="preload" href="assets/fonts/tajawal-arabic-700.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="css/fonts.css">
     <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
     <div class="top-toggles">
-        <button class="icon-btn" id="soundToggle" title="تشغيل/إيقاف الصوت" aria-label="تشغيل أو إيقاف الصوت">
-            <svg viewBox="0 0 24 24" id="soundIcon"></svg>
+        <button class="icon-btn" id="soundToggle" type="button" title="تشغيل/إيقاف الصوت" aria-label="تشغيل أو إيقاف الصوت" aria-pressed="true">
+            <span id="soundIcon"></span>
         </button>
-        <button class="icon-btn" id="themeToggle" title="الوضع الليلي" aria-label="الوضع الليلي">
-            <img id="themeIcon" src="assets/images/moon.svg" alt="" class="ui-icon">
+        <button class="icon-btn" id="themeToggle" type="button" title="الوضع الليلي" aria-label="الوضع الليلي">
+            <span id="themeIcon"></span>
         </button>
     </div>
 
-    <canvas id="confetti-canvas"></canvas>
-    <div class="toast" id="toast"></div>
+    <canvas id="confetti-canvas" aria-hidden="true"></canvas>
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
     <div class="container">
-        <!-- Start Screen -->
+
+        <!-- ============ شاشة التعريف (أول زيارة فقط) ============ -->
+        <div class="screen" id="introScreen">
+            <div class="intro-wrap">
+                <h1 class="intro-title">لغز واحد لتفهم اللعبة</h1>
+                <p class="intro-lead">كل لغز صورتان أو أكثر. اجمع معانيها في مثل عربي واحد.</p>
+
+                <div class="intro-card">
+                    <div class="emoji-display" id="introPuzzle"></div>
+                </div>
+
+                <p class="intro-feedback" id="introFeedback"></p>
+                <p class="intro-hint" id="introHint" hidden></p>
+
+                <div class="answer-section">
+                    <input type="text" class="answer-input" id="introInput"
+                           placeholder="اكتب المثل هنا..." autocomplete="off"
+                           enterkeyhint="send" aria-label="إجابتك">
+                    <button class="submit-btn" id="introSubmit" type="button" aria-label="إرسال الإجابة">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+                    </button>
+                </div>
+
+                <button class="text-btn" id="introSkip" type="button">تخطّي التعريف</button>
+            </div>
+        </div>
+
+        <!-- ============ الشاشة الأولى ============ -->
         <div class="screen active" id="startScreen">
             <div class="logo-section">
-                <div class="logo-emoji"><img src="assets/images/logo-color.svg" alt="تحدي الصور" class="logo-svg no-invert"></div>
+                <div class="logo-emoji">
+                    <svg class="logo-svg" role="img" aria-label="تحدي الصور"><use href="#i-logo-color"></use></svg>
+                </div>
                 <h1 class="game-title">تحدي الصور</h1>
                 <p class="game-subtitle">فكّ رموز الصور لتكتشف الأمثال والحكم والإسلاميات والشعر</p>
             </div>
 
-            <div class="resume-banner" id="resumeBanner" style="display: none;">
-                <span class="resume-banner-icon"><img src="assets/images/play.svg" alt="" class="ui-icon"></span>
+            <p class="storage-warning" id="storageWarning" hidden>
+                التخزين معطّل في هذا المتصفح — لن يُحفظ تقدّمك بعد إغلاق الصفحة.
+            </p>
+
+            <div class="resume-banner" id="resumeBanner" hidden>
+                <span class="resume-banner-icon">
+                    <svg class="ui-icon" aria-hidden="true"><use href="#i-play"></use></svg>
+                </span>
                 <div class="resume-banner-text">
                     <span class="resume-banner-title">استكمال اللعبة السابقة</span>
                     <span class="resume-banner-subtitle">
                         <span id="resumeDifficulty"></span> · <span id="resumeScore"></span> نقطة
                     </span>
                 </div>
-                <button class="resume-close" id="resumeClose" aria-label="إغلاق">✕</button>
+                <button class="resume-close" id="resumeClose" type="button" aria-label="إغلاق">✕</button>
             </div>
 
-            <h3 class="section-title">اختر النمط</h3>
+            <h2 class="section-title">اختر النمط</h2>
             <div class="mode-row">
-                <button class="mode-chip" id="classicChip" type="button">
-                    <span class="mode-chip-icon"><img src="assets/images/classic-icon.svg" alt="" class="ui-icon"></span>
+                <button class="mode-chip selected" id="classicChip" type="button" aria-pressed="true">
+                    <span class="mode-chip-icon">
+                        <svg class="ui-icon" aria-hidden="true"><use href="#i-classic-icon"></use></svg>
+                    </span>
                     <span class="mode-chip-label">كلاسيكي</span>
                 </button>
-                <button class="mode-chip" id="dailyChip" type="button">
-                    <span class="mode-chip-icon"><img src="assets/images/sunrise.svg" alt="" class="ui-icon"></span>
+                <button class="mode-chip" id="dailyChip" type="button" aria-pressed="false">
+                    <span class="mode-chip-icon">
+                        <svg class="ui-icon" aria-hidden="true"><use href="#i-sunrise"></use></svg>
+                    </span>
                     <span class="mode-chip-label">
-                        <span class="mode-chip-badge" id="dailyDoneBadge" style="display:none;">✓</span>
+                        <span class="mode-chip-badge" id="dailyDoneBadge" hidden>✓</span>
                         تحدي اليوم
                     </span>
                 </button>
             </div>
 
-            <h3 class="section-title">مستوى الصعوبة</h3>
-            <div class="difficulty-options">
-                <button class="difficulty-btn" data-level="easy" type="button">
-                    <span><img src="assets/images/easy-icon.svg" alt="" class="ui-icon"></span>
-                    <p>سهل</p>
-                </button>
-                <button class="difficulty-btn selected" data-level="medium" type="button">
-                    <span><img src="assets/images/medium-icon.svg" alt="" class="ui-icon"></span>
-                    <p>متوسط</p>
-                </button>
-                <button class="difficulty-btn" data-level="hard" type="button">
-                    <span><img src="assets/images/hard-icon.svg" alt="" class="ui-icon"></span>
-                    <p>صعب</p>
-                </button>
+            <button class="play-btn" id="playBtn" type="button" aria-label="ابدأ اللعب">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+            </button>
+
+            <!-- الإعدادات المتقدمة خلف زر: تُزاحم الهدف في أول شاشة -->
+            <button class="settings-toggle" id="settingsToggle" type="button" aria-expanded="false" aria-controls="settingsPanel">
+                خيارات اللعب
+                <span class="settings-caret" aria-hidden="true">⌄</span>
+            </button>
+
+            <div class="settings-panel" id="settingsPanel" hidden>
+                <h3 class="section-title">مستوى الصعوبة</h3>
+                <div class="difficulty-options">
+                    <button class="difficulty-btn" data-level="easy" type="button" aria-pressed="false">
+                        <span><svg class="ui-icon" aria-hidden="true"><use href="#i-easy-icon"></use></svg></span>
+                        <p>سهل</p>
+                    </button>
+                    <button class="difficulty-btn selected" data-level="medium" type="button" aria-pressed="true">
+                        <span><svg class="ui-icon" aria-hidden="true"><use href="#i-medium-icon"></use></svg></span>
+                        <p>متوسط</p>
+                    </button>
+                    <button class="difficulty-btn" data-level="hard" type="button" aria-pressed="false">
+                        <span><svg class="ui-icon" aria-hidden="true"><use href="#i-hard-icon"></use></svg></span>
+                        <p>صعب</p>
+                    </button>
+                </div>
+
+                <h3 class="section-title">الفئة</h3>
+                <div class="category-grid" id="categoryGrid"></div>
+
+                <div class="toggle-row">
+                    <button class="toggle-btn" id="timerToggle" type="button" aria-pressed="false">
+                        <svg class="ui-icon ui-icon-inline" aria-hidden="true"><use href="#i-timer-icon"></use></svg>
+                        تشغيل المؤقت
+                    </button>
+                </div>
+
+                <div class="volume-row" id="volumeRow">
+                    <label class="volume-label" for="volumeSlider">مستوى الصوت</label>
+                    <input type="range" id="volumeSlider" class="volume-slider"
+                           min="0" max="100" step="5" value="60" aria-label="مستوى الصوت">
+                </div>
             </div>
 
-            <h3 class="section-title">الفئة</h3>
-            <div class="category-grid" id="categoryGrid"></div>
-
-            <div class="toggle-row">
-                <button class="toggle-btn" id="timerToggle" type="button">
-                    <img src="assets/images/timer-icon.svg" alt="" class="ui-icon ui-icon-inline">
-                    تشغيل المؤقت
-                </button>
-            </div>
-
-            <button class="play-btn" id="playBtn" aria-label="ابدأ اللعب">
-                <svg viewBox="0 0 24 24">
-                    <path d="M8 5v14l11-7z"/>
-                </svg>
+            <button class="text-btn" id="journalBtn" type="button">
+                <svg class="ui-icon ui-icon-inline" aria-hidden="true"><use href="#i-open-book"></use></svg>
+                دفتر الأمثال
             </button>
 
             <button class="install-btn" id="installBtn" type="button">
-                <img src="assets/images/install-app.svg" alt="" class="ui-icon ui-icon-inline">
+                <svg class="ui-icon ui-icon-inline" aria-hidden="true"><use href="#i-install-app"></use></svg>
                 ثبّت اللعبة
             </button>
 
@@ -108,7 +165,7 @@
             </div>
         </div>
 
-        <!-- Game Screen -->
+        <!-- ============ شاشة اللعب ============ -->
         <div class="screen" id="gameScreen">
             <div class="game-header">
                 <div class="stat-box">
@@ -118,66 +175,72 @@
                 <div class="level-badge" id="levelBadge">المستوى 1</div>
                 <div class="stat-box">
                     <div class="stat-label">الحياة</div>
-                    <div class="lives-display" id="livesDisplay">
-                        <span class="heart"><img src="assets/images/heart-red.svg" alt="" class="ui-icon no-invert heart-icon"></span>
-                        <span class="heart"><img src="assets/images/heart-red.svg" alt="" class="ui-icon no-invert heart-icon"></span>
-                        <span class="heart"><img src="assets/images/heart-red.svg" alt="" class="ui-icon no-invert heart-icon"></span>
+                    <div class="lives-display" id="livesDisplay" role="img" aria-label="الحياة: 3 من 3">
+                        <span class="heart"><svg class="heart-icon" aria-hidden="true"><use href="#i-heart-red"></use></svg></span>
+                        <span class="heart"><svg class="heart-icon" aria-hidden="true"><use href="#i-heart-red"></use></svg></span>
+                        <span class="heart"><svg class="heart-icon" aria-hidden="true"><use href="#i-heart-red"></use></svg></span>
                     </div>
                 </div>
             </div>
 
             <div class="streak-badge" id="streakBadge">
-                <img src="assets/images/fire-orange.svg" alt="" class="ui-icon ui-icon-inline streak-icon no-invert">
+                <svg class="ui-icon ui-icon-inline streak-icon" aria-hidden="true"><use href="#i-fire-orange"></use></svg>
                 <span id="streakCount">0</span>
             </div>
 
-            <div class="timer-bar" id="timerBar">
+            <div class="timer-bar" id="timerBar" role="progressbar" aria-label="الوقت المتبقي">
                 <div class="timer-bar-fill" id="timerBarFill"></div>
             </div>
 
             <div class="question-card">
-                <div class="emoji-display" id="emojiDisplay">
-                    <div class="loading">
-                        <div class="loading-dot"></div>
-                        <div class="loading-dot"></div>
-                        <div class="loading-dot"></div>
-                    </div>
+                <div class="emoji-display" id="emojiDisplay"></div>
+
+                <!-- الإجابة تُكشف هنا لا في شريط Toast: الشريط كان يقصّ
+                     الإجابات الطويلة فتضيع اللحظة التعليمية الوحيدة -->
+                <div class="answer-reveal" id="answerReveal" role="status" aria-live="polite" hidden>
+                    <span class="answer-reveal-label" id="answerRevealLabel"></span>
+                    <span class="answer-reveal-text" id="answerRevealText"></span>
                 </div>
 
                 <div class="hint-section">
                     <button class="hint-btn" id="hintBtn" type="button">
-                        <span><img src="assets/images/lightbulb.svg" alt="" class="ui-icon ui-icon-inline"></span>
+                        <svg class="ui-icon ui-icon-inline" aria-hidden="true"><use href="#i-lightbulb"></use></svg>
                         <span>اظهر تلميح</span>
-                        <span class="hint-count" id="hintCount">3</span>
+                        <span class="hint-count" id="hintCount">5</span>
                     </button>
-                    <div class="hint-display" id="hintDisplay" style="display: none;"></div>
+                    <div class="hint-display" id="hintDisplay" role="status" aria-live="polite" hidden></div>
                 </div>
             </div>
 
             <div class="answer-section">
-                <input type="text" class="answer-input" id="answerInput" placeholder="اكتب إجابتك هنا..." autocomplete="off" aria-label="إجابتك">
-                <button class="submit-btn" id="submitBtn" aria-label="إرسال الإجابة">
-                    <svg viewBox="0 0 24 24">
-                        <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
-                    </svg>
+                <input type="text" class="answer-input" id="answerInput"
+                       placeholder="اكتب إجابتك هنا..." autocomplete="off"
+                       autocapitalize="off" spellcheck="false"
+                       enterkeyhint="send" aria-label="إجابتك">
+                <button class="submit-btn" id="submitBtn" type="button" aria-label="إرسال الإجابة">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
                 </button>
             </div>
 
-            <button class="skip-btn" id="skipBtn" type="button">تخطي السؤال ❯</button>
+            <button class="skip-btn" id="skipBtn" type="button">
+                <span>تخطي السؤال</span>
+                <span class="skip-count" id="skipCount">مجاني ×2</span>
+                <span aria-hidden="true">❮</span>
+            </button>
         </div>
 
-        <!-- Game Over Screen -->
+        <!-- ============ شاشة النهاية ============ -->
         <div class="screen" id="gameoverScreen">
             <div class="gameover-content">
-                <div class="gameover-emoji" id="gameoverEmoji"><img id="gameoverIcon" src="assets/images/cry.svg" alt="" class="gameover-svg"></div>
+                <div class="gameover-emoji" id="gameoverEmoji"><span id="gameoverIcon"></span></div>
                 <h2 class="gameover-title">انتهت اللعبة!</h2>
                 <p class="gameover-subtitle" id="gameoverSubtitle">أحسنت! لقد بذلت جهداً رائعاً</p>
 
                 <div class="final-score">
                     <div class="final-score-value" id="finalScore">0</div>
                     <div class="final-score-label">نقطة</div>
-                    <div class="highscore-badge" id="highscoreBadge" style="display: none;">
-                        <img src="assets/images/trophy.svg" alt="" class="ui-icon ui-icon-inline">
+                    <div class="highscore-badge" id="highscoreBadge" hidden>
+                        <svg class="ui-icon ui-icon-inline" aria-hidden="true"><use href="#i-trophy"></use></svg>
                         رقم قياسي جديد!
                     </div>
                 </div>
@@ -191,16 +254,21 @@
                         <div class="stat-card-value" id="highestLevel">1</div>
                         <div class="stat-card-label">أعلى مستوى</div>
                     </div>
+                    <div class="stat-card">
+                        <div class="stat-card-value" id="bestStreakStat">0</div>
+                        <div class="stat-card-label">أفضل سلسلة</div>
+                    </div>
                 </div>
 
                 <button class="action-btn primary" id="playAgainBtn" type="button">
-                    <span><img src="assets/images/refresh.svg" alt="" class="ui-icon ui-icon-inline"></span>
+                    <svg class="ui-icon" aria-hidden="true"><use href="#i-refresh"></use></svg>
                     العب مرة أخرى
                 </button>
                 <button class="action-btn secondary" id="shareBtn" type="button">
-                    <span><img src="assets/images/share-arrow.svg" alt="" class="ui-icon ui-icon-inline"></span>
+                    <svg class="ui-icon" aria-hidden="true"><use href="#i-share-arrow"></use></svg>
                     شارك نتيجتك
                 </button>
+                <button class="text-btn" id="changeSettingsBtn" type="button">تغيير الإعدادات</button>
             </div>
 
             <div class="footer">
@@ -208,6 +276,19 @@
                 <p>© 2026 تحدي الصور - All Rights Reserved</p>
             </div>
         </div>
+
+        <!-- ============ دفتر الأمثال ============ -->
+        <div class="screen" id="journalScreen">
+            <div class="journal-header">
+                <h2 class="section-title">دفتر الأمثال</h2>
+                <p class="journal-progress-line">
+                    اكتشفت <strong id="journalProgress">0 من 0</strong>
+                </p>
+            </div>
+            <ul class="journal-grid" id="journalGrid"></ul>
+            <button class="action-btn secondary" id="journalCloseBtn" type="button">رجوع</button>
+        </div>
+
     </div>
 
     <script type="module" src="js/main.js"></script>

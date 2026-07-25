@@ -1,39 +1,87 @@
-import { gameState, resetGameState, saveSession, clearSession, saveHighScore, markDailyCompleted } from './state.js';
+import {
+    gameState, resetGameState, saveSession, clearSession, saveHighScore, saveBestStreak,
+    markDailyStarted, loadDailyState, clearDailyState, setCurrentDailyDate,
+    HINTS_PER_ROUND, FREE_SKIPS_PER_ROUND
+} from './state.js';
 import { questionsDB, filterByCategory } from './questions.js';
 import { getDailyQuestions, todayKey } from './daily.js';
 import { checkAnswer } from './arabic.js';
 import { playSound } from './sounds.js';
-import { elements, showScreen, showToast, updateUI, flashCorrect, flashWrong, clearAnswerStyles } from './ui.js';
+import {
+    elements, showScreen, showToast, revealAnswer, hideReveal, updateUI,
+    flashCorrect, flashWrong, clearAnswerStyles, setInputLocked, renderPuzzle
+} from './ui.js';
 import { startTimer, stopTimer, hideTimer, elapsedSeconds } from './timer.js';
 import { triggerConfetti } from './confetti.js';
+import { preloadIcons } from './icons.js';
+import { markSolved } from './journal.js';
 
 const BASE_POINTS = { easy: 10, medium: 20, hard: 30 };
+const HINT_PENALTY = 3;
+const MIN_POINTS = 5;
+const SPEED_BONUS = 5;
+const SPEED_BONUS_WINDOW = 10;
 
-function shuffleIcons(icons) {
-    const arr = [...icons];
-    for (let i = arr.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [arr[i], arr[j]] = [arr[j], arr[i]];
-    }
-    return arr;
+/** كل تأخيرات اللعبة بالمللي ثانية في مكان واحد بدل أرقام مبعثرة. */
+const TIMINGS = {
+    afterCorrect: 900,
+    afterWrong: 2200,
+    afterSkip: 1400,
+    beforeGameOver: 700,
+    toast: 2600
+};
+
+/* ------------------------------------------------------------------ */
+/* إدارة المؤقتات المعلّقة                                             */
+/* ------------------------------------------------------------------ */
+
+/**
+ * كانت setTimeout تُستدعى بلا حفظ لمعرّفاتها، فمؤقت مجدول لتحميل السؤال التالي
+ * قد ينفَّذ بعد انتهاء اللعبة ويعرض سؤالاً فوق شاشة النهاية.
+ */
+const pending = new Set();
+
+function later(fn, ms) {
+    const id = setTimeout(() => {
+        pending.delete(id);
+        fn();
+    }, ms);
+    pending.add(id);
+    return id;
 }
 
-function renderIcons(icons) {
-    return icons
-        .map(key => `<img src="assets/images/${key}.svg" alt="" class="puzzle-icon" loading="eager" decoding="async">`)
-        .join('');
+function cancelPending() {
+    pending.forEach(clearTimeout);
+    pending.clear();
 }
+
+/* ------------------------------------------------------------------ */
+/* اختيار الأسئلة                                                      */
+/* ------------------------------------------------------------------ */
 
 function pickFromPool(pool) {
-    const available = pool.filter((_, i) => !gameState.usedQuestions.includes(i));
-    if (available.length === 0) {
+    const availableIdx = pool
+        .map((_, i) => i)
+        .filter(i => !gameState.usedQuestions.includes(i));
+
+    if (availableIdx.length === 0) {
+        // استُنفدت المجموعة: نبدأ دورة جديدة. كان السؤال المُعاد هنا لا يُسجَّل
+        // في usedQuestions، فيمكن أن يتكرر مباشرةً في الدور التالي.
         gameState.usedQuestions = [];
-        return pool[Math.floor(Math.random() * pool.length)];
+        const idx = Math.floor(Math.random() * pool.length);
+        gameState.usedQuestions.push(idx);
+        return pool[idx];
     }
-    const idx = Math.floor(Math.random() * available.length);
-    const originalIndex = pool.indexOf(available[idx]);
-    gameState.usedQuestions.push(originalIndex);
-    return available[idx];
+
+    const idx = availableIdx[Math.floor(Math.random() * availableIdx.length)];
+    gameState.usedQuestions.push(idx);
+    return pool[idx];
+}
+
+function currentPool() {
+    const byDifficulty = questionsDB[gameState.difficulty] || questionsDB.medium;
+    const filtered = filterByCategory(byDifficulty, gameState.category);
+    return filtered.length > 0 ? filtered : byDifficulty;
 }
 
 function getNextQuestion() {
@@ -42,9 +90,19 @@ function getNextQuestion() {
         gameState.dailyIndex++;
         return q;
     }
-    const pool = filterByCategory(questionsDB[gameState.difficulty], gameState.category);
-    return pickFromPool(pool.length > 0 ? pool : questionsDB[gameState.difficulty]);
+    return pickFromPool(currentPool());
 }
+
+function peekNextIcons() {
+    if (gameState.mode === 'daily' && gameState.dailyQuestions) {
+        return gameState.dailyQuestions[gameState.dailyIndex]?.icons || [];
+    }
+    return [];
+}
+
+/* ------------------------------------------------------------------ */
+/* دورة السؤال                                                         */
+/* ------------------------------------------------------------------ */
 
 export function loadQuestion() {
     if (!elements.emojiDisplay) return;
@@ -54,38 +112,55 @@ export function loadQuestion() {
         return;
     }
 
-    elements.emojiDisplay.innerHTML = `
-        <div class="loading">
-            <div class="loading-dot"></div>
-            <div class="loading-dot"></div>
-            <div class="loading-dot"></div>
-        </div>
-    `;
-    if (elements.hintDisplay) elements.hintDisplay.style.display = 'none';
-    if (elements.answerInput) elements.answerInput.value = '';
+    hideReveal();
     clearAnswerStyles();
-    gameState.hintsUsed = 0;
-    gameState.hintsRemaining = 3;
-    if (elements.hintCount) elements.hintCount.textContent = '3';
-    if (elements.hintBtn) elements.hintBtn.disabled = false;
+    if (elements.answerInput) elements.answerInput.value = '';
+    gameState.hintsUsedOnCurrent = 0;
 
     const question = getNextQuestion();
+    if (!question) {
+        endGame();
+        return;
+    }
     gameState.currentQuestion = question;
 
-    setTimeout(() => {
-        elements.emojiDisplay.innerHTML = renderIcons(shuffleIcons(question.icons));
-        if (gameState.timerEnabled && gameState.mode !== 'daily') {
-            const diff = question._diff || gameState.difficulty;
-            startTimer(diff);
-        }
-    }, 400);
+    // الأيقونات تُعرض بترتيبها المؤلَّف، لا مخلوطة.
+    //
+    // اللغز هنا من نوع rebus: معناه في تسلسل الرموز لا في مجموعتها. «بعيد عن
+    // العين بعيد عن القلب» مؤلَّف كـ[عين، عين، ×، قلب] — وخلطه يحوّله إلى كيس
+    // رموز بلا نحو، فيضطر اللاعب للتخمين بدل القراءة. الخلط كان يلغي الآلية
+    // الأساسية للعبة.
+    //
+    // كان هنا أيضاً setTimeout(..., 400) يعرض نقاط تحميل وهمية: كل الأسئلة في
+    // الذاكرة منذ التحميل الأول، فلا شيء يُنتظر. وكان currentQuestion يُسنَد قبل
+    // عرض الأيقونات، فيمكن الإجابة على سؤال لم يُعرض بعد.
+    renderPuzzle(question.icons);
+    setInputLocked(false);
+    updateUI();
+
+    if (gameState.timerEnabled && gameState.mode !== 'daily') {
+        startTimer(question._diff || gameState.difficulty);
+    }
+
+    preloadIcons(peekNextIcons());
+    elements.answerInput?.focus({ preventScroll: true });
 }
+
+/* ------------------------------------------------------------------ */
+/* بدء اللعب                                                           */
+/* ------------------------------------------------------------------ */
 
 export function startGame(opts = {}) {
     playSound('start');
+    cancelPending();
     const { mode = 'classic', difficulty, category, timerEnabled } = opts;
 
     if (mode === 'daily') {
+        const key = todayKey();
+        // يُسجَّل البدء الآن لا عند الانتهاء: كان إغلاق التبويب في المنتصف
+        // يترك التحدي غير مسجّل، فيُعاد بلا حد ويفقد معناه.
+        markDailyStarted(key);
+        setCurrentDailyDate(key);
         resetGameState({
             mode: 'daily',
             difficulty: 'medium',
@@ -110,20 +185,50 @@ export function startGame(opts = {}) {
 
 export function resumeGame() {
     playSound('start');
+    cancelPending();
     updateUI();
     showScreen('gameScreen');
     loadQuestion();
 }
 
+/** يستأنف تحدي اليوم من حيث توقّف اللاعب. */
+export function resumeDaily() {
+    const key = todayKey();
+    const saved = loadDailyState(key);
+    if (!saved) return false;
+
+    setCurrentDailyDate(key);
+    resetGameState({
+        mode: 'daily',
+        difficulty: 'medium',
+        dailyQuestions: getDailyQuestions(10),
+        dailyIndex: saved.dailyIndex,
+        timerEnabled: false,
+        score: saved.score,
+        lives: saved.lives,
+        level: saved.level,
+        correctAnswers: saved.correctAnswers,
+        hintsRemaining: saved.hintsRemaining,
+        skipsRemaining: saved.skipsRemaining,
+        streak: saved.streak,
+        bestStreak: saved.bestStreak
+    });
+    resumeGame();
+    return true;
+}
+
+/* ------------------------------------------------------------------ */
+/* النقاط                                                              */
+/* ------------------------------------------------------------------ */
+
 function awardPoints() {
     const diff = gameState.currentQuestion?._diff || gameState.difficulty;
-    const base = BASE_POINTS[diff] || 20;
-    const hintPenalty = gameState.hintsUsed * 3;
-    let points = Math.max(base - hintPenalty, 5);
+    const base = BASE_POINTS[diff] || BASE_POINTS.medium;
+    let points = Math.max(base - gameState.hintsUsedOnCurrent * HINT_PENALTY, MIN_POINTS);
 
     const seconds = elapsedSeconds();
-    if (gameState.timerEnabled && seconds > 0 && seconds <= 10) {
-        points += 5;
+    if (gameState.timerEnabled && seconds > 0 && seconds <= SPEED_BONUS_WINDOW) {
+        points += SPEED_BONUS;
     }
 
     if (gameState.streak >= 5) points = Math.round(points * 2);
@@ -132,119 +237,215 @@ function awardPoints() {
     return points;
 }
 
+/* ------------------------------------------------------------------ */
+/* الإجابة                                                             */
+/* ------------------------------------------------------------------ */
+
+/**
+ * قفل الإرسال.
+ *
+ * بدونه كان الضغط المتكرر خلال نافذة التغذية الراجعة يعيد تنفيذ submitAnswer
+ * على نفس السؤال — الحقل لا يُمسح والزر لا يُعطَّل — فتُمنح النقاط والسلسلة
+ * مراراً (إجابة واحدة أُرسلت 8 مرات أعطت 180 نقطة بدل 20).
+ */
+let submitting = false;
+
 export function submitAnswer() {
+    if (submitting) return;
+
     const answer = elements.answerInput?.value.trim();
     if (!answer || !gameState.currentQuestion) return;
 
+    submitting = true;
+    setInputLocked(true);
     playSound('click');
     stopTimer();
 
-    if (checkAnswer(answer, gameState.currentQuestion.answer)) {
-        playSound('correct');
-        flashCorrect();
-        gameState.streak++;
-        if (gameState.streak > gameState.bestStreak) gameState.bestStreak = gameState.streak;
+    const question = gameState.currentQuestion;
 
-        const points = awardPoints();
-        gameState.score += points;
-        gameState.correctAnswers++;
-
-        if (gameState.streak === 3) showToast('سلسلة من 3! نقاط مضاعفة');
-        else if (gameState.streak === 5) showToast('سلسلة من 5! نقاط مضاعفة x2');
-        else if (gameState.correctAnswers % 5 === 0 && gameState.mode !== 'daily') {
-            gameState.level++;
-            playSound('levelup');
-            showToast(`أحسنت! انتقلت للمستوى ${gameState.level}`);
-        } else {
-            showToast(`+${points} نقطة`);
-        }
-
-        updateUI();
-        saveSession();
-        setTimeout(() => {
-            clearAnswerStyles();
-            loadQuestion();
-        }, 900);
+    if (checkAnswer(answer, question.answer)) {
+        onCorrect(question);
     } else {
-        playSound('wrong');
-        flashWrong();
-        gameState.streak = 0;
-        gameState.lives--;
-        updateUI();
-
-        if (gameState.lives <= 0) {
-            setTimeout(() => endGame(), 600);
-        } else {
-            showToast(`حاول مرة أخرى! الإجابة: ${gameState.currentQuestion.answer}`);
-            saveSession();
-            setTimeout(() => {
-                clearAnswerStyles();
-                if (elements.answerInput) elements.answerInput.value = '';
-                loadQuestion();
-            }, 1900);
-        }
+        onWrong(question);
     }
 }
 
-export function handleTimeout() {
-    if (!gameState.currentQuestion) return;
+function unlock() {
+    submitting = false;
+    setInputLocked(false);
+}
+
+function onCorrect(question) {
+    playSound('correct');
+    flashCorrect();
+
+    gameState.streak++;
+    if (gameState.streak > gameState.bestStreak) gameState.bestStreak = gameState.streak;
+
+    const gained = awardPoints();
+    gameState.score += gained;
+    gameState.correctAnswers++;
+
+    const isNewDiscovery = markSolved(question.answer);
+
+    // ترقية المستوى كانت داخل سلسلة else-if بعد فحوص السلسلة، فتُتخطى كلما
+    // تزامنت الإجابة الخامسة مع سلسلة من 5 — أي دائماً للاعب لا يخطئ.
+    let leveledUp = false;
+    if (gameState.correctAnswers % 5 === 0 && gameState.mode !== 'daily') {
+        gameState.level++;
+        leveledUp = true;
+    }
+
+    if (leveledUp) {
+        playSound('levelup');
+        showToast(`أحسنت! انتقلت للمستوى ${gameState.level}`);
+    } else if (gameState.streak === 3) {
+        showToast('سلسلة من 3! النقاط ×1.5');
+    } else if (gameState.streak === 5) {
+        showToast('سلسلة من 5! النقاط ×2');
+    } else if (isNewDiscovery) {
+        showToast(`+${gained} نقطة · لغز جديد في دفترك`);
+    } else {
+        showToast(`+${gained} نقطة`);
+    }
+
+    updateUI();
+    saveSession();
+
+    later(() => {
+        clearAnswerStyles();
+        unlock();
+        loadQuestion();
+    }, TIMINGS.afterCorrect);
+}
+
+function onWrong(question) {
     playSound('wrong');
     flashWrong();
     gameState.streak = 0;
     gameState.lives--;
     updateUI();
-    showToast(`انتهى الوقت! الإجابة: ${gameState.currentQuestion.answer}`);
 
     if (gameState.lives <= 0) {
-        setTimeout(() => endGame(), 700);
-    } else {
-        saveSession();
-        setTimeout(() => {
-            clearAnswerStyles();
-            loadQuestion();
-        }, 1900);
+        later(endGame, TIMINGS.beforeGameOver);
+        return;
     }
+
+    revealAnswer('الإجابة الصحيحة', question.answer);
+    saveSession();
+
+    later(() => {
+        clearAnswerStyles();
+        if (elements.answerInput) elements.answerInput.value = '';
+        unlock();
+        loadQuestion();
+    }, TIMINGS.afterWrong);
 }
 
-export function showHint() {
-    if (gameState.hintsRemaining <= 0 || !gameState.currentQuestion) return;
-    playSound('hint');
-    const hint = gameState.currentQuestion.hints[gameState.hintsUsed];
-    gameState.hintsUsed++;
-    gameState.hintsRemaining--;
+export function handleTimeout() {
+    if (!gameState.currentQuestion || submitting) return;
 
-    if (elements.hintDisplay) {
-        elements.hintDisplay.innerHTML = `<img src="assets/images/lightbulb.svg" alt="" class="ui-icon ui-icon-inline"> ${hint}`;
-        elements.hintDisplay.style.display = 'block';
-    }
-    if (elements.hintCount) elements.hintCount.textContent = gameState.hintsRemaining;
-    if (gameState.hintsRemaining <= 0 && elements.hintBtn) elements.hintBtn.disabled = true;
-}
-
-export function skipQuestion() {
-    playSound('click');
-    stopTimer();
+    submitting = true;
+    setInputLocked(true);
+    playSound('wrong');
+    flashWrong();
     gameState.streak = 0;
     gameState.lives--;
     updateUI();
 
     if (gameState.lives <= 0) {
-        endGame();
-    } else {
-        showToast(`تخطي! الإجابة كانت: ${gameState.currentQuestion?.answer || ''}`);
-        saveSession();
-        setTimeout(() => loadQuestion(), 1400);
+        later(endGame, TIMINGS.beforeGameOver);
+        return;
     }
+
+    revealAnswer('انتهى الوقت! الإجابة', gameState.currentQuestion.answer);
+    saveSession();
+
+    later(() => {
+        clearAnswerStyles();
+        unlock();
+        loadQuestion();
+    }, TIMINGS.afterWrong);
 }
 
+/* ------------------------------------------------------------------ */
+/* التلميحات والتخطي                                                   */
+/* ------------------------------------------------------------------ */
+
+export function showHint() {
+    if (gameState.hintsRemaining <= 0 || !gameState.currentQuestion || submitting) return;
+
+    const hints = gameState.currentQuestion.hints || [];
+    if (gameState.hintsUsedOnCurrent >= hints.length) {
+        showToast('لا مزيد من التلميحات لهذا اللغز');
+        return;
+    }
+
+    playSound('hint');
+    const hint = hints[gameState.hintsUsedOnCurrent];
+    gameState.hintsUsedOnCurrent++;
+    gameState.hintsRemaining--;
+
+    if (elements.hintDisplay) {
+        // نص التلميح من قاعدة الأسئلة الثابتة، لكن textContent يبقيه آمناً
+        // مهما تغيّر مصدر المحتوى لاحقاً.
+        elements.hintDisplay.textContent = hint;
+        elements.hintDisplay.hidden = false;
+    }
+    updateUI();
+    saveSession();
+}
+
+export function skipQuestion() {
+    if (submitting || !gameState.currentQuestion) return;
+
+    submitting = true;
+    setInputLocked(true);
+    playSound('click');
+    stopTimer();
+    gameState.streak = 0;
+
+    // كان التخطي يكلّف حياة كاملة كالإجابة الخاطئة تماماً، فلا معنى له إطلاقاً:
+    // التخمين العشوائي أفضل دائماً لأنه قد يصيب.
+    const wasFree = gameState.skipsRemaining > 0;
+    if (wasFree) {
+        gameState.skipsRemaining--;
+    } else {
+        gameState.lives--;
+    }
+    updateUI();
+
+    if (gameState.lives <= 0) {
+        later(endGame, TIMINGS.beforeGameOver);
+        return;
+    }
+
+    revealAnswer(wasFree ? 'تخطيت! الإجابة' : 'تخطي بخسارة حياة! الإجابة',
+                 gameState.currentQuestion.answer);
+    saveSession();
+
+    later(() => {
+        unlock();
+        loadQuestion();
+    }, TIMINGS.afterSkip);
+}
+
+/* ------------------------------------------------------------------ */
+/* النهاية                                                             */
+/* ------------------------------------------------------------------ */
+
 export function endGame() {
+    cancelPending();
+    submitting = false;
     playSound('gameover');
     hideTimer();
+    hideReveal();
     clearSession();
-
-    if (gameState.mode === 'daily') markDailyCompleted(todayKey());
+    if (gameState.mode === 'daily') clearDailyState();
 
     const isNewHighScore = saveHighScore(gameState.score);
+    saveBestStreak(gameState.bestStreak);
+
     if (isNewHighScore) {
         playSound('highscore');
         triggerConfetti();
@@ -253,32 +454,55 @@ export function endGame() {
     if (elements.finalScore)     elements.finalScore.textContent     = gameState.score;
     if (elements.correctAnswers) elements.correctAnswers.textContent = gameState.correctAnswers;
     if (elements.highestLevel)   elements.highestLevel.textContent   = gameState.level;
-    if (elements.highscoreBadge) elements.highscoreBadge.style.display = isNewHighScore ? 'inline-block' : 'none';
+    if (elements.bestStreakStat) elements.bestStreakStat.textContent = gameState.bestStreak;
+    if (elements.highscoreBadge) elements.highscoreBadge.hidden      = !isNewHighScore;
 
-    const setGameoverIcon = (file) => {
-        if (elements.gameoverIcon) elements.gameoverIcon.src = `assets/images/${file}.svg`;
-    };
-
+    let icon = 'muscle';
+    let subtitle = 'لا تستسلم! حاول مرة أخرى';
     if (gameState.score >= 100) {
-        setGameoverIcon('trophy');
-        elements.gameoverSubtitle.textContent = 'أداء مذهل! أنت بطل حقيقي!';
+        icon = 'trophy';
+        subtitle = 'أداء مذهل! أنت بطل حقيقي';
     } else if (gameState.score >= 50) {
-        setGameoverIcon('glowing-star');
-        elements.gameoverSubtitle.textContent = 'عمل رائع! استمر في التحسن!';
-    } else {
-        setGameoverIcon('muscle');
-        elements.gameoverSubtitle.textContent = 'لا تستسلم! حاول مرة أخرى!';
+        icon = 'glowing-star';
+        subtitle = 'عمل رائع! استمر في التحسن';
+    }
+
+    if (elements.gameoverSubtitle) elements.gameoverSubtitle.textContent = subtitle;
+    if (elements.gameoverIcon) {
+        import('./icons.js').then(({ setIcon }) => setIcon(elements.gameoverIcon, icon, 'gameover-svg'));
     }
 
     showScreen('gameoverScreen');
 }
 
+/** إعدادات آخر جولة — يستخدمها زر «العب مرة أخرى» ليبدأ فوراً. */
+export function lastRoundOptions() {
+    return {
+        mode: gameState.mode === 'daily' ? 'classic' : gameState.mode,
+        difficulty: gameState.difficulty,
+        category: gameState.category,
+        timerEnabled: gameState.timerEnabled
+    };
+}
+
 export function shareScore() {
-    const text = `🖼️ تحدي الصور\n\n🏆 حققت ${gameState.score} نقطة!\n✅ ${gameState.correctAnswers} إجابة صحيحة\n🔥 أفضل سلسلة: ${gameState.bestStreak}\n📊 المستوى ${gameState.level}\n\nهل تستطيع التغلب على نتيجتي؟`;
+    const text =
+        `تحدي الصور\n\n` +
+        `حققت ${gameState.score} نقطة\n` +
+        `${gameState.correctAnswers} إجابة صحيحة\n` +
+        `أفضل سلسلة: ${gameState.bestStreak}\n` +
+        `المستوى ${gameState.level}\n\n` +
+        `هل تستطيع التغلب على نتيجتي؟`;
+
     if (navigator.share) {
         navigator.share({ title: 'تحدي الصور', text }).catch(() => {});
     } else if (navigator.clipboard) {
-        navigator.clipboard.writeText(text);
-        showToast('تم نسخ النتيجة!');
+        navigator.clipboard.writeText(text)
+            .then(() => showToast('تم نسخ النتيجة'))
+            .catch(() => showToast('تعذّر نسخ النتيجة'));
+    } else {
+        showToast('المشاركة غير مدعومة في هذا المتصفح');
     }
 }
+
+export { HINTS_PER_ROUND, FREE_SKIPS_PER_ROUND, TIMINGS };
