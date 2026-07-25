@@ -59,15 +59,6 @@ function cancelPending() {
 /* اختيار الأسئلة                                                      */
 /* ------------------------------------------------------------------ */
 
-function shuffleIcons(icons) {
-    const arr = [...icons];
-    for (let i = arr.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [arr[i], arr[j]] = [arr[j], arr[i]];
-    }
-    return arr;
-}
-
 function pickFromPool(pool) {
     const availableIdx = pool
         .map((_, i) => i)
@@ -133,10 +124,17 @@ export function loadQuestion() {
     }
     gameState.currentQuestion = question;
 
-    // كان هنا setTimeout(..., 400) يعرض نقاط تحميل وهمية: كل الأسئلة في الذاكرة
-    // منذ التحميل الأول، فلا شيء يُنتظر. وكان currentQuestion يُسنَد قبل عرض
-    // الأيقونات، فيمكن الإجابة على سؤال لم يُعرض بعد.
-    renderPuzzle(shuffleIcons(question.icons));
+    // الأيقونات تُعرض بترتيبها المؤلَّف، لا مخلوطة.
+    //
+    // اللغز هنا من نوع rebus: معناه في تسلسل الرموز لا في مجموعتها. «بعيد عن
+    // العين بعيد عن القلب» مؤلَّف كـ[عين، عين، ×، قلب] — وخلطه يحوّله إلى كيس
+    // رموز بلا نحو، فيضطر اللاعب للتخمين بدل القراءة. الخلط كان يلغي الآلية
+    // الأساسية للعبة.
+    //
+    // كان هنا أيضاً setTimeout(..., 400) يعرض نقاط تحميل وهمية: كل الأسئلة في
+    // الذاكرة منذ التحميل الأول، فلا شيء يُنتظر. وكان currentQuestion يُسنَد قبل
+    // عرض الأيقونات، فيمكن الإجابة على سؤال لم يُعرض بعد.
+    renderPuzzle(question.icons);
     setInputLocked(false);
     updateUI();
 
