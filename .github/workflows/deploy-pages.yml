@@ -25,7 +25,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
 
       # يمنع انحراف الـsprite عن ملفات SVG المصدرية
       - name: Verify sprite is up to date
