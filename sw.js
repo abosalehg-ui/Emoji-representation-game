@@ -1,4 +1,4 @@
-const CACHE_NAME = 'image-challenge-v3';
+const CACHE_NAME = 'image-challenge-v4';
 
 /**
  * كل ما تحتاجه اللعبة للعمل أوفلاين.
@@ -38,14 +38,15 @@ const CORE_ASSETS = [
     './assets/fonts/tajawal-latin-700.woff2',
     './assets/fonts/tajawal-latin-800.woff2',
     './assets/fonts/tajawal-latin-900.woff2',
-    './assets/sounds/correct.mp3',
-    './assets/sounds/wrong.mp3',
-    './assets/sounds/hint.mp3',
-    './assets/sounds/levelup.mp3',
-    './assets/sounds/gameover.mp3',
-    './assets/sounds/highscore.mp3',
+    // الصوتان الصغيران فقط (16KB معاً).
+    //
+    // كانت الثمانية كلها هنا — 338 كيلوبايت تُجلب أثناء تثبيت الـService Worker
+    // مع أول زيارة، فتُبطل التحميل الكسول في sounds.js تماماً: اللاعب يدفع ثمن
+    // كل الأصوات قبل أن يرى لغزاً واحداً، من الطرف الآخر. البقية يخزّنها
+    // handleAsset تلقائياً عند أول جلب لها (تسخين الخمول في sounds.js)، فيبقى
+    // العمل أوفلاين سليماً بعد ثوانٍ من أول زيارة.
     './assets/sounds/click.mp3',
-    './assets/sounds/start.mp3',
+    './assets/sounds/correct.mp3',
     './assets/icons/icon-192.svg',
     './assets/icons/icon-512.svg',
     './assets/icons/icon-maskable.svg'
@@ -63,12 +64,30 @@ self.addEventListener('install', (event) => {
     );
 });
 
+/**
+ * يعيد جلب أي أصل أساسي غاب عن المخزن.
+ *
+ * cache.add في install يبتلع أخطاءه (عمداً، حتى لا يُسقط أصلٌ واحد الأوفلاين
+ * كله) — لكن ذلك يفتح ثقباً: لو فشل جلب sprite.svg في أول زيارة، فلا هو في
+ * المخزن ولا الأيقونات المنفردة، فتُفتح اللعبة أوفلاين بلا أي أيقونة إطلاقاً.
+ * التحقق هنا يغلق الثقب في أول تفعيل تالٍ.
+ */
+async function healMissingCore() {
+    const cache = await caches.open(CACHE_NAME);
+    const missing = [];
+    for (const url of CORE_ASSETS) {
+        if (!(await cache.match(url))) missing.push(url);
+    }
+    await Promise.all(missing.map(url => cache.add(url).catch(() => {})));
+}
+
 self.addEventListener('activate', (event) => {
     event.waitUntil(
         caches.keys()
             .then(keys => Promise.all(
                 keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))
             ))
+            .then(() => healMissingCore())
             .then(() => self.clients.claim())
     );
 });
@@ -77,8 +96,14 @@ self.addEventListener('activate', (event) => {
 async function handleNavigation(request) {
     try {
         const fresh = await fetch(request);
-        const cache = await caches.open(CACHE_NAME);
-        cache.put('./index.html', fresh.clone()).catch(() => {});
+        // فحص ok ضروري: Cache.put لا يرفض الاستجابات غير الناجحة (يرفض 206 فقط)،
+        // فكانت صفحة 404 أو 502 — أو صفحة تسجيل دخول من بوابة شبكة عامة —
+        // تُخزَّن مكان هيكل التطبيق وتُقدَّم أوفلاين إلى الأبد. وhandleAsset
+        // أدناه كان يفحصها أصلاً، فالتناقض كان داخل ملف واحد.
+        if (fresh.ok) {
+            const cache = await caches.open(CACHE_NAME);
+            cache.put('./index.html', fresh.clone()).catch(() => {});
+        }
         return fresh;
     } catch {
         return (await caches.match('./index.html')) || Response.error();

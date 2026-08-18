@@ -8,6 +8,20 @@ export function todayKey() {
     return `${y}-${m}-${day}`;
 }
 
+/** مفتاح اليوم السابق لمفتاح معطى — تحسب به سلسلة الأيام. */
+export function previousKey(dateKey) {
+    const [y, m, d] = String(dateKey).split('-').map(Number);
+    if (!y || !m || !d) return '';
+    // UTC عمداً: الحساب على أرقام التقويم وحدها، فلا يزحزحه التوقيت الصيفي
+    const date = new Date(Date.UTC(y, m - 1, d));
+    date.setUTCDate(date.getUTCDate() - 1);
+    return [
+        date.getUTCFullYear(),
+        String(date.getUTCMonth() + 1).padStart(2, '0'),
+        String(date.getUTCDate()).padStart(2, '0')
+    ].join('-');
+}
+
 /** مولّد أرقام شبه عشوائي ببذرة ثابتة — نفس اليوم يعطي نفس الأسئلة لكل اللاعبين. */
 function hashSeed(str) {
     let h = 1779033703 ^ str.length;

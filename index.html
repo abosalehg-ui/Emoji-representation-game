@@ -5,6 +5,13 @@
     <!-- لا maximum-scale ولا user-scalable=no: منع التكبير مخالفة WCAG 1.4.4 -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="theme-color" content="#FACC15">
+    <!-- اللعبة لا تتصل بأي مصدر خارجي إطلاقاً، فالسياسة لا تكسر شيئاً.
+         GitHub Pages لا يرسل ترويسات مخصصة، والوسم يؤدي الغرض.
+         style-src يسمح بالمضمّن لأن شريط المؤقت يحسب عرضه في كل إطار؛ وهو
+         تنازل بلا ثمن هنا إذ لا يدخل إلى الصفحة أي HTML من مصدر خارجي.
+         الصارم منها هو ما يهم: script-src و connect-src و object-src و base-uri. -->
+    <meta http-equiv="Content-Security-Policy"
+          content="default-src 'self'; img-src 'self' data:; media-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; font-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
     <meta name="description" content="تحدي الصور - لعبة عربية: فكّ رموز الصور لتكتشف الأمثال والحكم والإسلاميات والشعر">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -102,6 +109,7 @@
                         <span class="mode-chip-badge" id="dailyDoneBadge" hidden>✓</span>
                         تحدي اليوم
                     </span>
+                    <span class="daily-streak" id="dailyStreakBadge" hidden></span>
                 </button>
             </div>
 
@@ -227,6 +235,13 @@
                 <span class="skip-count" id="skipCount">مجاني ×2</span>
                 <span aria-hidden="true">❮</span>
             </button>
+
+            <!-- بلا هذا الزر كان اللاعب محبوساً في الجولة حتى ينفد رصيد حياته
+                 أو يعيد تحميل الصفحة. الجلسة تُحفظ، فالخروج غير مكلف. -->
+            <button class="text-btn quiet" id="exitRoundBtn" type="button">
+                الخروج إلى القائمة
+                <span class="exit-hint" aria-hidden="true">Esc</span>
+            </button>
         </div>
 
         <!-- ============ شاشة النهاية ============ -->
@@ -251,8 +266,8 @@
                         <div class="stat-card-label">إجابة صحيحة</div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-card-value" id="highestLevel">1</div>
-                        <div class="stat-card-label">أعلى مستوى</div>
+                        <div class="stat-card-value" id="highestLevel">متوسط</div>
+                        <div class="stat-card-label">أعلى صعوبة</div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-card-value" id="bestStreakStat">0</div>
@@ -285,6 +300,7 @@
                     اكتشفت <strong id="journalProgress">0 من 0</strong>
                 </p>
             </div>
+            <div class="journal-filters" id="journalFilters"></div>
             <ul class="journal-grid" id="journalGrid"></ul>
             <button class="action-btn secondary" id="journalCloseBtn" type="button">رجوع</button>
         </div>

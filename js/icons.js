@@ -18,20 +18,44 @@ const SPRITE_URL = 'assets/sprite.svg';
 let spriteReady = false;
 
 /**
+ * مهلة قصوى لجلب الـsprite.
+ *
+ * بدونها كان طلب معلّق (لا فاشل — معلّق، وهو الأشيع على شبكات الجوال) يوقف
+ * الإقلاع كله: boot() كان ينتظر هذي الدالة، فتظهر الشاشة الأولى مرسومةً
+ * بالكامل وأزرارها كلها ميتة بلا أي رسالة خطأ.
+ */
+const SPRITE_TIMEOUT_MS = 5000;
+
+/** AbortSignal.timeout حديث نسبياً؛ نتراجع إلى AbortController على الأجهزة الأقدم. */
+function timeoutSignal(ms) {
+    if (typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function') {
+        return AbortSignal.timeout(ms);
+    }
+    const controller = new AbortController();
+    setTimeout(() => controller.abort(), ms);
+    return controller.signal;
+}
+
+/**
  * يجلب الـsprite ويحقنه. عند الفشل نبقى على <img> كبديل حتى لا تصبح اللعبة
  * بلا أيقونات إطلاقاً — الملفات المنفردة ما زالت في المستودع.
+ *
+ * لا يُنتظر هذا الوعد في مسار الإقلاع: الـsprite تحسين لا شرط.
  */
 export async function loadSprite() {
     if (spriteReady) return true;
     try {
-        const res = await fetch(SPRITE_URL, { cache: 'force-cache' });
+        const res = await fetch(SPRITE_URL, {
+            cache: 'force-cache',
+            signal: timeoutSignal(SPRITE_TIMEOUT_MS)
+        });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const text = await res.text();
         if (!text.includes('<symbol')) throw new Error('sprite غير صالح');
 
         const holder = document.createElement('div');
         holder.setAttribute('aria-hidden', 'true');
-        holder.style.cssText = 'position:absolute;width:0;height:0;overflow:hidden';
+        holder.className = 'sprite-holder';
         holder.innerHTML = text;
         document.body.prepend(holder);
         spriteReady = true;
@@ -43,6 +67,10 @@ export async function loadSprite() {
             const href = u.getAttribute('href');
             u.setAttribute('href', href);
         });
+
+        // وبما أننا لم نعد ننتظر الـsprite، قد تكون الواجهة رُسمت بـ<img>
+        // البديلة قبل وصوله — نرقّيها الآن ليعمل currentColor.
+        promoteStaticIcons();
         return true;
     } catch {
         spriteReady = false;
@@ -68,6 +96,25 @@ function fallbackStaticIcons() {
         if (!img.alt) img.setAttribute('aria-hidden', 'true');
         img.decoding = 'async';
         svg.replaceWith(img);
+    });
+}
+
+/**
+ * عكس fallbackStaticIcons: يحوّل <img> البديلة إلى <svg><use> بعد وصول الـsprite.
+ *
+ * ضروري لأن الإقلاع لم يعد ينتظر الـsprite، فأي واجهة بُنيت قبل وصوله رُسمت
+ * بـ<img> — وهي تعمل لكنها لا ترث currentColor.
+ */
+function promoteStaticIcons() {
+    document.querySelectorAll('img.icon-img[src*="assets/images/"]').forEach(img => {
+        const name = img.getAttribute('src').split('/').pop().replace(/\.svg$/, '');
+        const cls = img.className.replace(/\bicon-img\b/, '').trim();
+        const label = img.getAttribute('alt') || '';
+
+        const wrapper = document.createElement('div');
+        wrapper.innerHTML = iconMarkup(name, cls, label);
+        const svg = wrapper.firstElementChild;
+        if (svg) img.replaceWith(svg);
     });
 }
 

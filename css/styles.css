@@ -30,6 +30,18 @@
     --heart-live: #EF4444;
     --heart-lost: #CBD5E1;
     --focus-ring: #2563EB;
+
+    /**
+     * الشريط الذي تشغله أزرار الزاوية المثبّتة (صوت + مظهر).
+     *
+     * كانت هذي الأزرار — position: fixed بـz-index 100 — تغطّي صندوق النقاط في
+     * شاشة اللعب على كل مقاسات الجوال المقيسة (390 و360 و320): كلمة «النقاط»
+     * تُقصّ إلى حرفها الأخير والرقم يُدفن تحت زر الصوت، فيتنافس اللاعب على رقم
+     * لا يراه. الشاشات التي تحتها محتوى مهم تُزيح نفسها أسفل هذا الشريط.
+     */
+    --toggles-top: max(16px, env(safe-area-inset-top));
+    --toggles-size: 40px;
+    --toggles-band: calc(var(--toggles-top) + var(--toggles-size) + 10px);
 }
 
 [data-theme="dark"] {
@@ -636,6 +648,17 @@ svg.journal-icon {
 
 /* ================= شاشة اللعب ================= */
 
+/**
+ * تُزاح شاشتا اللعب والدفتر أسفل شريط أزرار الزاوية.
+ *
+ * الحاوية تعطي 20px حشواً علوياً أصلاً (14px على الشاشات الضيقة)، فنطرحه
+ * ونضيف الباقي فقط — بدل إزاحة مضاعفة.
+ */
+#gameScreen,
+#journalScreen {
+    padding-top: max(0px, calc(var(--toggles-band) - 20px));
+}
+
 .game-header {
     display: flex;
     justify-content: space-between;
@@ -733,6 +756,13 @@ svg.journal-icon {
 
 /* ================= بطاقة السؤال ================= */
 
+/**
+ * البطاقة تملأ ما بقي من الشاشة، لكن محتواها يتوسّطها بدل أن يتمدد فيها.
+ *
+ * كان flex: 1 متراكماً على البطاقة وعلى حاوية الأيقونات معاً، فتصير الحاوية
+ * 481 بكسل تسبح فيها ثلاث أيقونات من 59 بكسل — أي 88% فراغ حول الشيء الوحيد
+ * الذي جاء اللاعب لينظر إليه.
+ */
 .question-card {
     background: var(--card-bg);
     border-radius: 24px;
@@ -742,26 +772,29 @@ svg.journal-icon {
     flex: 1;
     display: flex;
     flex-direction: column;
+    justify-content: center;
+    gap: 12px;
 }
 
 .emoji-display {
     text-align: center;
-    padding: 20px 0;
-    flex: 1;
+    padding: 8px 0;
+    flex: 0 1 auto;
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     justify-content: center;
-    gap: 14px;
-    min-height: 120px;
+    gap: 16px;
+    min-height: 132px;
+    max-height: 44vh;
     transition: transform 0.3s ease;
 }
 
 /* الأيقونات تتقلص فعلياً على الشاشات الضيقة — القاعدة القديمة كانت تغيّر
    font-size وهو بلا أثر على عناصر رسومية */
 .puzzle-icon {
-    width: clamp(44px, 15vw, 64px);
-    height: clamp(44px, 15vw, 64px);
+    width: clamp(54px, 21vw, 96px);
+    height: clamp(54px, 21vw, 96px);
     color: var(--icon-color);
     filter: drop-shadow(0 2px 4px rgba(0,0,0,0.08));
 }
@@ -813,8 +846,13 @@ svg.journal-icon {
 
 /* ================= التلميحات ================= */
 
+/**
+ * التلميح يلي اللغز مباشرةً.
+ *
+ * كان margin-top: auto يدفعه إلى قاع البطاقة، فيبقى الفراغ بين اللغز وتلميحه
+ * حتى بعد أن توسّطت البطاقة محتواها.
+ */
 .hint-section {
-    margin-top: auto;
     padding-top: 14px;
     border-top: 1px solid var(--border);
 }
@@ -1156,8 +1194,8 @@ svg.journal-icon {
 .journal-grid {
     list-style: none;
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
-    gap: 8px;
+    grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+    gap: 10px;
     flex: 1;
     align-content: start;
     overflow-y: auto;
@@ -1168,8 +1206,8 @@ svg.journal-icon {
     background: var(--card-bg);
     border: 2px solid var(--border);
     border-radius: 12px;
-    padding: 8px 6px;
-    min-height: 80px;
+    padding: 12px 10px;
+    min-height: 104px;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -1189,13 +1227,15 @@ svg.journal-icon {
 .journal-cell.unlocked { border-color: var(--primary); }
 
 .journal-icons { display: flex; gap: 4px; line-height: 0; }
-.journal-icon { width: 20px; height: 20px; color: var(--icon-color); }
+.journal-icons { flex-wrap: wrap; justify-content: center; }
+.journal-icon { width: 24px; height: 24px; color: var(--icon-color); }
 
+/* كان 10 بكسل — أصغر من أن يُقرأ لمثل من اثنتي عشرة كلمة */
 .journal-text {
-    font-size: 10px;
+    font-size: 12.5px;
     font-weight: 600;
     color: var(--text-dark);
-    line-height: 1.4;
+    line-height: 1.5;
     overflow-wrap: break-word;
 }
 
@@ -1245,7 +1285,7 @@ svg.journal-icon {
 
 .top-toggles {
     position: fixed;
-    top: max(16px, env(safe-area-inset-top));
+    top: var(--toggles-top);
     /* خاصية منطقية: تتبع اتجاه المستند تلقائياً */
     inset-inline-start: 16px;
     display: flex;
@@ -1335,4 +1375,111 @@ svg.journal-icon {
     .question-card { padding: 14px; }
     .gameover-content { padding: 8px 0; }
     .gameover-emoji { display: none; }
+}
+
+/* ================= الخروج من الجولة ================= */
+
+/**
+ * مخرج صريح من الجولة الجارية.
+ *
+ * لم يكن في شاشة اللعب أي مخرج: ثلاثة أزرار فقط (تلميح، إرسال، تخطي)
+ * و Escape لا يعمل فيها — فمن اختار الصعب بالغلط يتحمّل ثلاث خسارات أو يعيد
+ * تحميل الصفحة. يبقى هادئاً بصرياً حتى لا يُقرأ كفعل من أفعال اللعب.
+ */
+.text-btn.quiet {
+    color: var(--text-gray);
+    font-size: 13px;
+    font-weight: 600;
+    opacity: 0.85;
+    margin-top: 4px;
+}
+
+.text-btn.quiet:hover {
+    opacity: 1;
+    color: var(--text-dark);
+}
+
+.exit-hint {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    padding: 1px 6px;
+    margin-inline-start: 6px;
+    border: 1px solid var(--border-dashed);
+    border-radius: 5px;
+    color: var(--text-gray);
+}
+
+/* لوحة المفاتيح ليست في متناول شاشات اللمس، فلا معنى لعرض اختصارها */
+@media (hover: none) and (pointer: coarse) {
+    .exit-hint { display: none; }
+}
+
+/* ================= سلسلة الأيام ================= */
+
+/**
+ * عدّاد الأيام المتتالية على شريحة التحدي اليومي.
+ * لم يكن في النمط اليومي أي سبب للعودة غداً — والسلسلة أقوى محرّك عودة في
+ * هذي الفئة، لكنها لا تنفع ما لم يرها اللاعب قبل أن يضغط زر اللعب.
+ */
+.daily-streak {
+    position: absolute;
+    top: 6px;
+    inset-inline-end: 8px;
+    font-size: 11px;
+    font-weight: 800;
+    line-height: 1;
+    padding: 3px 6px;
+    border-radius: 20px;
+    background: var(--primary-light);
+    color: var(--text-dark);
+}
+.daily-streak[hidden] { display: none; }
+
+#dailyChip { position: relative; }
+
+/* ================= مرشِّح الدفتر ================= */
+
+.journal-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    justify-content: center;
+    margin-bottom: 12px;
+}
+
+.journal-filter {
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 6px 12px;
+    border-radius: 20px;
+    border: 2px solid var(--border);
+    background: var(--card-bg);
+    color: var(--text-gray);
+    cursor: pointer;
+    transition: border-color 0.2s ease, color 0.2s ease;
+}
+
+.journal-filter:hover { border-color: var(--border-dashed); }
+
+.journal-filter.selected {
+    border-color: var(--primary);
+    color: var(--text-dark);
+    background: var(--primary-light);
+}
+
+.journal-filter-count {
+    font-size: 11px;
+    font-weight: 800;
+    opacity: 0.75;
+    margin-inline-start: 2px;
+}
+
+/* حاوية الـsprite المحقون: مخفية تماماً، والرموز داخلها تُستدعى بـ<use> */
+.sprite-holder {
+    position: absolute;
+    width: 0;
+    height: 0;
+    overflow: hidden;
 }
