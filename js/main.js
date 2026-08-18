@@ -1,10 +1,10 @@
 import { CATEGORIES, countFor, isCategoryPlayable, MIN_POOL, totalQuestions } from './questions.js';
 import {
     gameState, loadSession, clearSession, restoreSession,
-    isDailyCompletedToday, loadDailyState, hasSeenIntro
+    isDailyCompletedToday, loadDailyState, hasSeenIntro, getDailyStreak
 } from './state.js';
 import { isPersistent } from './storage.js';
-import { todayKey } from './daily.js';
+import { todayKey, previousKey } from './daily.js';
 import { loadSounds, playSound, isSoundEnabled, toggleSound, getVolume, setVolume } from './sounds.js';
 import {
     cacheElements, elements, showScreen, showToast,
@@ -14,12 +14,15 @@ import { loadSprite, iconMarkup, setIcon } from './icons.js';
 import { initTimer, hideTimer } from './timer.js';
 import {
     startGame, resumeGame, resumeDaily, submitAnswer, showHint, skipQuestion,
-    shareScore, handleTimeout, lastRoundOptions
+    shareScore, handleTimeout, lastRoundOptions, abandonRound
 } from './game.js';
 import { journalEntries, solvedCount } from './journal.js';
 import { showIntro, submitIntro, skipIntro } from './tutorial.js';
 
 const DIFFICULTY_LABELS = { easy: 'سهل', medium: 'متوسط', hard: 'صعب' };
+
+/** أقصى ما نؤخّر به الإقلاع انتظاراً للـsprite قبل المضيّ بالأيقونات البديلة. */
+const BOOT_SPRITE_WAIT_MS = 1200;
 
 /* ------------------------------------------------------------------ */
 /* الفئات                                                              */
@@ -101,6 +104,15 @@ function refreshDailyChip() {
     elements.dailyChip?.classList.toggle('done', done && !resumable);
     if (elements.dailyChip) {
         elements.dailyChip.dataset.resumable = String(resumable);
+    }
+
+    // السلسلة معروضة على الشريحة نفسها: سلسلة لا يراها اللاعب لا تحفّزه
+    if (elements.dailyStreakBadge) {
+        const { count, lastDate } = getDailyStreak();
+        // تنكسر السلسلة إن فات يوم كامل — لا نعرض رقماً لم يعد صحيحاً
+        const alive = count > 0 && (lastDate === todayKey() || lastDate === previousKey(todayKey()));
+        elements.dailyStreakBadge.hidden = !alive;
+        if (alive) elements.dailyStreakBadge.textContent = `🔥 ${count}`;
     }
 }
 
@@ -234,6 +246,16 @@ function setupVolume() {
 /* دفتر الأمثال                                                        */
 /* ------------------------------------------------------------------ */
 
+/** الفئة المعروضة حالياً في الدفتر. */
+let journalFilter = 'all';
+
+/**
+ * يرسم دفتر الأمثال.
+ *
+ * كان 143 خلية متطابقة بلا تجميع ولا مرشِّح — تسع شاشات من علامات استفهام —
+ * ونص الإجابة فيها بحجم 10 بكسل، ولا تُعرض إلا أول أيقونتين من أربع فتظهر
+ * ألغاز الأربع مبتورةً ومضلّلة.
+ */
 function renderJournal() {
     if (!elements.journalGrid) return;
 
@@ -245,15 +267,49 @@ function renderJournal() {
         elements.journalProgress.textContent = `${found} من ${total}`;
     }
 
-    elements.journalGrid.innerHTML = entries.map((e, i) => {
+    renderJournalFilters(entries);
+
+    const shown = journalFilter === 'all'
+        ? entries
+        : entries.filter(e => e.category === journalFilter);
+
+    elements.journalGrid.innerHTML = shown.map((e, i) => {
         if (!e.unlocked) {
             return `<li class="journal-cell locked" aria-label="لغز ${i + 1}: لم يُكتشف بعد">؟</li>`;
         }
-        return `<li class="journal-cell unlocked" title="${escapeHtml(e.answer)}">
-            <span class="journal-icons">${e.icons.slice(0, 2).map(n => iconMarkup(n, 'journal-icon')).join('')}</span>
+        // كل الأيقونات لا أول اثنتين: اللغز جملة رمزية، وبترها يشوّهها
+        return `<li class="journal-cell unlocked">
+            <span class="journal-icons">${e.icons.map(n => iconMarkup(n, 'journal-icon')).join('')}</span>
             <span class="journal-text">${escapeHtml(e.answer)}</span>
         </li>`;
     }).join('');
+}
+
+/** شريط تصفية بالفئة، وفي كل فئة عدد ما اكتُشف من مجموعها. */
+function renderJournalFilters(entries) {
+    if (!elements.journalFilters) return;
+
+    const stat = (id) => {
+        const set = id === 'all' ? entries : entries.filter(e => e.category === id);
+        return { found: set.filter(e => e.unlocked).length, total: set.length };
+    };
+
+    elements.journalFilters.innerHTML = CATEGORIES.map(c => {
+        const { found, total } = stat(c.id);
+        const on = c.id === journalFilter;
+        return `<button class="journal-filter${on ? ' selected' : ''}" type="button"
+                        data-category="${c.id}" aria-pressed="${on}">
+            ${c.label} <span class="journal-filter-count">${found}/${total}</span>
+        </button>`;
+    }).join('');
+
+    elements.journalFilters.querySelectorAll('.journal-filter').forEach(btn => {
+        btn.addEventListener('click', () => {
+            playSound('click');
+            journalFilter = btn.dataset.category;
+            renderJournal();
+        });
+    });
 }
 
 function escapeHtml(s) {
@@ -298,12 +354,23 @@ function setupInstallButton() {
 /* الإقلاع                                                             */
 /* ------------------------------------------------------------------ */
 
+function isActiveScreen(id) {
+    return !!document.getElementById(id)?.classList.contains('active');
+}
+
 function goToStart() {
     hideTimer();
     refreshDailyChip();
     maybeShowResumeBanner();
     refreshCategoryAvailability();
     showScreen('startScreen');
+}
+
+/** يترك الجولة الجارية ويعود للقائمة — التقدّم محفوظ ويظهر في شريط الاستكمال. */
+function leaveRound() {
+    abandonRound();
+    goToStart();
+    showToast('حُفظ تقدّمك — تقدر تكمل من الشاشة الأولى');
 }
 
 function startFromControls() {
@@ -327,9 +394,19 @@ async function boot() {
     initTheme();
     loadSounds();
 
-    // الـsprite قبل بناء أي واجهة: عندها ترسم الأيقونات كـ<use> ويعمل
-    // currentColor. عند الفشل ترجع icons.js تلقائياً إلى <img>.
-    await loadSprite();
+    // الـsprite تحسين لا شرط للإقلاع.
+    //
+    // كان هنا `await loadSprite()` مجرّداً، فطلب معلّق — لا فاشل، معلّق، وهو
+    // الأشيع على شبكات الجوال — يوقف بقية boot() إلى الأبد: تظهر الشاشة الأولى
+    // مرسومةً بالكامل ولا يُربط أي مستمع حدث، فتبدو اللعبة سليمة وكل أزرارها
+    // ميتة بلا رسالة خطأ.
+    //
+    // ننتظره مدة قصيرة فقط: على شبكة سريعة يصل قبل الرسم فلا وميض، وعلى شبكة
+    // متعثرة نُقلع بدونه بالأيقونات البديلة ثم نرقّيها حين يصل (promoteStaticIcons).
+    await Promise.race([
+        loadSprite(),
+        new Promise(resolve => setTimeout(resolve, BOOT_SPRITE_WAIT_MS))
+    ]);
 
     setSoundIcon();
     setupVolume();
@@ -411,10 +488,18 @@ async function boot() {
         toggleTheme();
     });
 
-    // الهروب يخرج من اللعبة إلى الشاشة الأولى
+    /* --- الخروج من الجولة --- */
+    elements.exitRoundBtn?.addEventListener('click', () => {
+        playSound('click');
+        leaveRound();
+    });
+
+    // الهروب يخرج من الشاشة الحالية إلى الأولى — وكان يعالج شاشة الدفتر فقط،
+    // فلا مخرج من الجولة إطلاقاً لا بزر ولا بمفتاح.
     document.addEventListener('keydown', (e) => {
         if (e.key !== 'Escape') return;
-        if (document.getElementById('journalScreen')?.classList.contains('active')) goToStart();
+        if (isActiveScreen('journalScreen')) goToStart();
+        else if (isActiveScreen('gameScreen')) leaveRound();
     });
 
     setInputLocked(false);

@@ -7,7 +7,8 @@ const STORAGE_KEYS = {
     theme:      'emojiCharades_theme',
     dailyDone:  'emojiCharades_dailyDone',
     dailyState: 'emojiCharades_dailyState',
-    seenIntro:  'emojiCharades_seenIntro'
+    seenIntro:  'emojiCharades_seenIntro',
+    dailyStreak:'emojiCharades_dailyStreak'
 };
 
 export const SAVE_VERSION = 2;
@@ -18,8 +19,44 @@ export const HINTS_PER_ROUND = 5;
 /** تخطيات مجانية للجولة، بعدها يكلّف التخطي حياة. */
 export const FREE_SKIPS_PER_ROUND = 2;
 
+/** ترتيب الصعوبات تصاعدياً — تتسلّقه الجولة مع المستويات. */
 const DIFFICULTIES = ['easy', 'medium', 'hard'];
 const MODES = ['classic', 'daily'];
+
+/**
+ * كم مستوى يلزم لصعود درجة صعوبة واحدة.
+ *
+ * واحد لا اثنان: المستوى يرتفع كل خمس إجابات صحيحة، وباثنين ما كانت الصعوبة
+ * تتحرك قبل عشر إجابات — وأكثر الجولات تنتهي قبلها بأرواحها الثلاث، فيبقى
+ * التصعيد نظرياً لا يشعر به أحد.
+ */
+export const LEVELS_PER_STEP = 1;
+
+/** إجابات صحيحة لكل مستوى. */
+export const CORRECT_PER_LEVEL = 5;
+
+/**
+ * الصعوبة الفعلية عند مستوى ما.
+ *
+ * كان «المستوى» رقماً يزيد وشارةً تومض وحسب: لا يغيّر الصعوبة ولا وقت المؤقت
+ * ولا يفتح شيئاً — فمنحنى الصعوبة داخل الجولة مسطّح تماماً، واللغز الأربعون
+ * بصعوبة الأول، و«أعلى مستوى» في شاشة النهاية ليس إلا عدد الإجابات مقسوماً
+ * على خمسة. الآن يصعد اختيار اللاعب درجةً كل مستويين بحد أقصى «صعب».
+ *
+ * من بدأ على «صعب» يبقى عليه — لا شيء فوقه، ولا نُنزله عمّا اختاره.
+ */
+export function difficultyForLevel(base, level) {
+    const start = DIFFICULTIES.indexOf(base);
+    if (start < 0) return base;
+    const steps = Math.floor((Math.max(1, level) - 1) / LEVELS_PER_STEP);
+    return DIFFICULTIES[Math.min(start + steps, DIFFICULTIES.length - 1)];
+}
+
+/** الصعوبة المعروضة الآن — للمجموعة وللمؤقت وللنقاط. التحدي اليومي ثابت. */
+export function activeDifficulty() {
+    if (gameState.mode === 'daily') return gameState.difficulty;
+    return difficultyForLevel(gameState.difficulty, gameState.level);
+}
 
 function toInt(v, fallback = 0) {
     const n = parseInt(v, 10);
@@ -45,6 +82,7 @@ function defaultState() {
         mode: 'classic',
         dailyIndex: 0,
         dailyQuestions: null,
+        dailyMarks: [],
         highScore: toInt(getItem(STORAGE_KEYS.highScore), 0),
         bestStreakEver: toInt(getItem(STORAGE_KEYS.bestStreak), 0)
     };
@@ -118,6 +156,9 @@ function isValidSession(s) {
         && typeof s.timerEnabled === 'boolean'
         && Array.isArray(s.usedQuestions)
         && s.usedQuestions.every(i => Number.isInteger(i) && i >= 0)
+        // كان dailyIndex الحقل الوحيد الذي يمر بلا فحص بين جيرانه كلها،
+        // فيُمرَّر خاماً إلى resumeDaily
+        && Number.isInteger(s.dailyIndex) && s.dailyIndex >= 0 && s.dailyIndex <= 100
         && Number.isFinite(s.savedAt);
 }
 
@@ -225,6 +266,41 @@ export function clearDailyState() {
 
 export function setCurrentDailyDate(dateKey) {
     currentDailyDate = dateKey;
+}
+
+/* ------------------------------------------------------------------ */
+/* سلسلة الأيام                                                        */
+/* ------------------------------------------------------------------ */
+
+/**
+ * سلسلة الأيام المتتالية التي أكمل فيها اللاعب التحدي.
+ *
+ * لم يكن في النمط اليومي أي سبب للعودة غداً: لا سلسلة، ولا سجل للأيام السابقة،
+ * ولا نمط مشاركة — مجرد رقم مجرد لا يثير فضول أحد. والسلسلة أقوى محرّك عودة
+ * في هذي الفئة كلها، وأرخصها تنفيذاً.
+ */
+const isStreakRecord = v =>
+    v && typeof v === 'object' && !Array.isArray(v)
+    && Number.isInteger(v.count) && v.count >= 0 && v.count <= 100_000
+    && typeof v.lastDate === 'string';
+
+export function getDailyStreak() {
+    return getJSON(STORAGE_KEYS.dailyStreak, isStreakRecord) || { count: 0, lastDate: '' };
+}
+
+/**
+ * يسجّل إكمال تحدي يومٍ ما ويعيد السلسلة بعد التحديث.
+ * @param {string} dateKey       مفتاح اليوم المكتمل
+ * @param {string} previousDate  مفتاح اليوم السابق له (تحسبه daily.js)
+ */
+export function recordDailyCompletion(dateKey, previousDate) {
+    const current = getDailyStreak();
+    if (current.lastDate === dateKey) return current;   // نفس اليوم مرتين لا يزيدها
+
+    const count = current.lastDate === previousDate ? current.count + 1 : 1;
+    const next = { count, lastDate: dateKey };
+    setJSON(STORAGE_KEYS.dailyStreak, next);
+    return next;
 }
 
 /* ------------------------------------------------------------------ */

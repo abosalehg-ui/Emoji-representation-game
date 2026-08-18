@@ -1,12 +1,13 @@
 import {
     gameState, resetGameState, saveSession, clearSession, saveHighScore, saveBestStreak,
     markDailyStarted, loadDailyState, clearDailyState, setCurrentDailyDate,
-    HINTS_PER_ROUND, FREE_SKIPS_PER_ROUND
+    HINTS_PER_ROUND, FREE_SKIPS_PER_ROUND, CORRECT_PER_LEVEL,
+    activeDifficulty, difficultyForLevel, recordDailyCompletion, getDailyStreak
 } from './state.js';
 import { questionsDB, filterByCategory } from './questions.js';
-import { getDailyQuestions, todayKey } from './daily.js';
+import { getDailyQuestions, todayKey, previousKey } from './daily.js';
 import { checkAnswer } from './arabic.js';
-import { playSound } from './sounds.js';
+import { playSound, warmSounds } from './sounds.js';
 import {
     elements, showScreen, showToast, revealAnswer, hideReveal, updateUI,
     flashCorrect, flashWrong, clearAnswerStyles, setInputLocked, renderPuzzle
@@ -21,6 +22,8 @@ const HINT_PENALTY = 3;
 const MIN_POINTS = 5;
 const SPEED_BONUS = 5;
 const SPEED_BONUS_WINDOW = 10;
+
+const DIFFICULTY_LABELS = { easy: 'سهل', medium: 'متوسط', hard: 'صعب' };
 
 /** كل تأخيرات اللعبة بالمللي ثانية في مكان واحد بدل أرقام مبعثرة. */
 const TIMINGS = {
@@ -79,7 +82,8 @@ function pickFromPool(pool) {
 }
 
 function currentPool() {
-    const byDifficulty = questionsDB[gameState.difficulty] || questionsDB.medium;
+    const diff = activeDifficulty();
+    const byDifficulty = questionsDB[diff] || questionsDB.medium;
     const filtered = filterByCategory(byDifficulty, gameState.category);
     return filtered.length > 0 ? filtered : byDifficulty;
 }
@@ -139,7 +143,7 @@ export function loadQuestion() {
     updateUI();
 
     if (gameState.timerEnabled && gameState.mode !== 'daily') {
-        startTimer(question._diff || gameState.difficulty);
+        startTimer(question._diff || activeDifficulty());
     }
 
     preloadIcons(peekNextIcons());
@@ -152,6 +156,7 @@ export function loadQuestion() {
 
 export function startGame(opts = {}) {
     playSound('start');
+    warmSounds();
     cancelPending();
     const { mode = 'classic', difficulty, category, timerEnabled } = opts;
 
@@ -185,6 +190,7 @@ export function startGame(opts = {}) {
 
 export function resumeGame() {
     playSound('start');
+    warmSounds();
     cancelPending();
     updateUI();
     showScreen('gameScreen');
@@ -218,11 +224,29 @@ export function resumeDaily() {
 }
 
 /* ------------------------------------------------------------------ */
+/* علامات التحدي اليومي                                                */
+/* ------------------------------------------------------------------ */
+
+/**
+ * علامة لكل سؤال في التحدي اليومي، تُبنى منها شبكة المشاركة.
+ *
+ * كانت المشاركة نصاً فيه رقم مجرد — والآلية التي جعلت هذي الفئة تنتشر أصلاً هي
+ * الشبكة الرمزية الخالية من الحرق: تُري نتيجتك دون أن تكشف أي إجابة.
+ */
+const MARKS = { correct: '🟩', hint: '🟨', wrong: '🟥', skip: '⬜' };
+
+function markDaily(kind) {
+    if (gameState.mode !== 'daily') return;
+    if (!Array.isArray(gameState.dailyMarks)) gameState.dailyMarks = [];
+    gameState.dailyMarks.push(kind);
+}
+
+/* ------------------------------------------------------------------ */
 /* النقاط                                                              */
 /* ------------------------------------------------------------------ */
 
-function awardPoints() {
-    const diff = gameState.currentQuestion?._diff || gameState.difficulty;
+export function awardPoints() {
+    const diff = gameState.currentQuestion?._diff || activeDifficulty();
     const base = BASE_POINTS[diff] || BASE_POINTS.medium;
     let points = Math.max(base - gameState.hintsUsedOnCurrent * HINT_PENALTY, MIN_POINTS);
 
@@ -287,16 +311,30 @@ function onCorrect(question) {
     gameState.correctAnswers++;
 
     const isNewDiscovery = markSolved(question.answer);
+    markDaily(gameState.hintsUsedOnCurrent > 0 ? 'hint' : 'correct');
 
     // ترقية المستوى كانت داخل سلسلة else-if بعد فحوص السلسلة، فتُتخطى كلما
     // تزامنت الإجابة الخامسة مع سلسلة من 5 — أي دائماً للاعب لا يخطئ.
     let leveledUp = false;
-    if (gameState.correctAnswers % 5 === 0 && gameState.mode !== 'daily') {
+    let harderNow = false;
+    if (gameState.correctAnswers % CORRECT_PER_LEVEL === 0 && gameState.mode !== 'daily') {
+        const before = activeDifficulty();
         gameState.level++;
         leveledUp = true;
+
+        const after = activeDifficulty();
+        if (after !== before) {
+            harderNow = true;
+            // فهارس usedQuestions تشير إلى المجموعة القديمة؛ إبقاؤها بعد تبدّل
+            // المجموعة يحجب أسئلة لم تُعرض ويعيد أخرى عُرضت.
+            gameState.usedQuestions = [];
+        }
     }
 
-    if (leveledUp) {
+    if (harderNow) {
+        playSound('levelup');
+        showToast(`المستوى ${gameState.level} — ارتفعت الصعوبة إلى ${DIFFICULTY_LABELS[activeDifficulty()]}`);
+    } else if (leveledUp) {
         playSound('levelup');
         showToast(`أحسنت! انتقلت للمستوى ${gameState.level}`);
     } else if (gameState.streak === 3) {
@@ -322,6 +360,7 @@ function onCorrect(question) {
 function onWrong(question) {
     playSound('wrong');
     flashWrong();
+    markDaily('wrong');
     gameState.streak = 0;
     gameState.lives--;
     updateUI();
@@ -349,6 +388,7 @@ export function handleTimeout() {
     setInputLocked(true);
     playSound('wrong');
     flashWrong();
+    markDaily('wrong');
     gameState.streak = 0;
     gameState.lives--;
     updateUI();
@@ -403,6 +443,7 @@ export function skipQuestion() {
     setInputLocked(true);
     playSound('click');
     stopTimer();
+    markDaily('skip');
     gameState.streak = 0;
 
     // كان التخطي يكلّف حياة كاملة كالإجابة الخاطئة تماماً، فلا معنى له إطلاقاً:
@@ -441,7 +482,15 @@ export function endGame() {
     hideTimer();
     hideReveal();
     clearSession();
-    if (gameState.mode === 'daily') clearDailyState();
+
+    let dailyStreak = null;
+    if (gameState.mode === 'daily') {
+        clearDailyState();
+        // السلسلة تُسجَّل عند الإكمال لا عند البدء: من فتح التحدي ولم يُنهه
+        // لا يستحق يوماً في سلسلته.
+        const key = todayKey();
+        dailyStreak = recordDailyCompletion(key, previousKey(key));
+    }
 
     const isNewHighScore = saveHighScore(gameState.score);
     saveBestStreak(gameState.bestStreak);
@@ -453,7 +502,13 @@ export function endGame() {
 
     if (elements.finalScore)     elements.finalScore.textContent     = gameState.score;
     if (elements.correctAnswers) elements.correctAnswers.textContent = gameState.correctAnswers;
-    if (elements.highestLevel)   elements.highestLevel.textContent   = gameState.level;
+    // كان يعرض gameState.level، وهو حرفياً correctAnswers ÷ 5 — رقم مكرر لا
+    // معلومة جديدة، ويقرأ 1 دائماً في التحدي اليومي حيث لا يزيد المستوى أصلاً.
+    if (elements.highestLevel) {
+        elements.highestLevel.textContent = gameState.mode === 'daily'
+            ? '—'
+            : DIFFICULTY_LABELS[activeDifficulty()] || '—';
+    }
     if (elements.bestStreakStat) elements.bestStreakStat.textContent = gameState.bestStreak;
     if (elements.highscoreBadge) elements.highscoreBadge.hidden      = !isNewHighScore;
 
@@ -467,12 +522,36 @@ export function endGame() {
         subtitle = 'عمل رائع! استمر في التحسن';
     }
 
+    if (gameState.mode === 'daily' && dailyStreak) {
+        subtitle = dailyStreak.count > 1
+            ? `تحدي اليوم اكتمل · سلسلة ${dailyStreak.count} أيام`
+            : 'تحدي اليوم اكتمل · بداية سلسلة جديدة';
+    }
+
     if (elements.gameoverSubtitle) elements.gameoverSubtitle.textContent = subtitle;
     if (elements.gameoverIcon) {
         import('./icons.js').then(({ setIcon }) => setIcon(elements.gameoverIcon, icon, 'gameover-svg'));
     }
 
     showScreen('gameoverScreen');
+}
+
+/**
+ * يترك الجولة الجارية دون إنهائها.
+ *
+ * لم يكن في شاشة اللعب أي مخرج: ثلاثة أزرار (تلميح، إرسال، تخطي) و Escape
+ * لا يعمل فيها — فمن اختار الصعب بالغلط يتحمّل ثلاث خسارات أو يعيد تحميل
+ * الصفحة. الجلسة تُحفظ هنا فيظهر شريط الاستكمال في الشاشة الأولى.
+ */
+export function abandonRound() {
+    cancelPending();
+    stopTimer();
+    hideTimer();
+    hideReveal();
+    submitting = false;
+    setInputLocked(false);
+    if (elements.answerInput) elements.answerInput.value = '';
+    saveSession();
 }
 
 /** إعدادات آخر جولة — يستخدمها زر «العب مرة أخرى» ليبدأ فوراً. */
@@ -485,14 +564,41 @@ export function lastRoundOptions() {
     };
 }
 
+/**
+ * نص المشاركة.
+ *
+ * في التحدي اليومي نبني شبكة رمزية خالية من الحرق — تُري أداءك سؤالاً سؤالاً
+ * دون كشف أي إجابة، وهي الآلية التي تجعل نتيجة اليوم قابلة للمقارنة بين
+ * اللاعبين أصلاً. وبدونها كانت المشاركة رقماً مجرداً لا يثير فضول أحد.
+ */
+export function buildShareText() {
+    if (gameState.mode === 'daily') {
+        const marks = (gameState.dailyMarks || []).map(k => MARKS[k] || MARKS.skip);
+        const total = gameState.dailyQuestions?.length || marks.length;
+        const streak = getDailyStreak();
+        const lines = [
+            `تحدي الصور · ${todayKey()}`,
+            `${gameState.correctAnswers}/${total}`,
+            marks.join('')
+        ];
+        if (streak.count > 1) lines.push(`🔥 سلسلة ${streak.count} أيام`);
+        return lines.filter(Boolean).join('\n');
+    }
+
+    return [
+        'تحدي الصور',
+        '',
+        `حققت ${gameState.score} نقطة`,
+        `${gameState.correctAnswers} إجابة صحيحة`,
+        `أفضل سلسلة: ${gameState.bestStreak}`,
+        `أعلى صعوبة: ${DIFFICULTY_LABELS[activeDifficulty()] || '—'}`,
+        '',
+        'هل تستطيع التغلب على نتيجتي؟'
+    ].join('\n');
+}
+
 export function shareScore() {
-    const text =
-        `تحدي الصور\n\n` +
-        `حققت ${gameState.score} نقطة\n` +
-        `${gameState.correctAnswers} إجابة صحيحة\n` +
-        `أفضل سلسلة: ${gameState.bestStreak}\n` +
-        `المستوى ${gameState.level}\n\n` +
-        `هل تستطيع التغلب على نتيجتي؟`;
+    const text = buildShareText();
 
     if (navigator.share) {
         navigator.share({ title: 'تحدي الصور', text }).catch(() => {});
@@ -505,4 +611,4 @@ export function shareScore() {
     }
 }
 
-export { HINTS_PER_ROUND, FREE_SKIPS_PER_ROUND, TIMINGS };
+export { HINTS_PER_ROUND, FREE_SKIPS_PER_ROUND, TIMINGS, activeDifficulty, difficultyForLevel };

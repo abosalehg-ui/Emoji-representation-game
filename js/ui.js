@@ -1,5 +1,6 @@
-import { gameState, setTheme, getTheme, HINTS_PER_ROUND } from './state.js';
+import { gameState, setTheme, getTheme, HINTS_PER_ROUND, activeDifficulty } from './state.js';
 import { iconMarkup, setIcon } from './icons.js';
+import { stopConfetti } from './confetti.js';
 
 export const elements = {};
 
@@ -7,17 +8,17 @@ const ELEMENT_IDS = [
     'startScreen','gameScreen','gameoverScreen',
     'playBtn','scoreDisplay','levelBadge','livesDisplay',
     'emojiDisplay','hintBtn','hintCount','hintDisplay',
-    'answerInput','submitBtn','skipBtn','skipCount',
+    'answerInput','submitBtn','skipBtn','skipCount','exitRoundBtn',
     'answerReveal','answerRevealLabel','answerRevealText',
     'finalScore','highscoreBadge','correctAnswers','highestLevel','bestStreakStat',
     'playAgainBtn','changeSettingsBtn','shareBtn','soundToggle','themeToggle','themeIcon',
     'toast','gameoverEmoji','gameoverIcon','gameoverSubtitle',
     'streakBadge','streakCount','timerBar','timerBarFill',
     'resumeBanner','resumeDifficulty','resumeScore','resumeClose',
-    'dailyChip','classicChip','dailyDoneBadge',
+    'dailyChip','classicChip','dailyDoneBadge','dailyStreakBadge',
     'categoryGrid','timerToggle','installBtn','soundIcon',
     'volumeSlider','volumeRow','settingsToggle','settingsPanel',
-    'journalBtn','journalScreen','journalGrid','journalProgress','journalCloseBtn',
+    'journalBtn','journalScreen','journalGrid','journalProgress','journalCloseBtn','journalFilters',
     'introScreen','introPuzzle','introInput','introSubmit','introSkip','introHint','introFeedback',
     'storageWarning'
 ];
@@ -32,6 +33,12 @@ export function cacheElements() {
 export function showScreen(screenId) {
     const target = document.getElementById(screenId);
     if (!target) return;
+
+    // الكونفيتي يسقط من فوق الشاشة بسرعة 120–360 بكسل/ثانية، أي أنه يستمر حتى
+    // 14 ثانية على شاشة طويلة — فوق دفتر الأمثال والقائمة والإعدادات بـz-index
+    // 999. كانت stopConfetti مُصدَّرة ولا تُستدعى في أي مكان.
+    if (screenId !== 'gameoverScreen') stopConfetti();
+
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     target.classList.add('active');
     window.scrollTo({ top: 0, behavior: 'auto' });
@@ -108,9 +115,17 @@ export function setInputLocked(locked) {
 /* تحديث الواجهة                                                       */
 /* ------------------------------------------------------------------ */
 
+const DIFFICULTY_LABELS = { easy: 'سهل', medium: 'متوسط', hard: 'صعب' };
+
 export function updateUI() {
     if (elements.scoreDisplay) elements.scoreDisplay.textContent = gameState.score;
-    if (elements.levelBadge)   elements.levelBadge.textContent   = `المستوى ${gameState.level}`;
+
+    // الشارة تسمّي الصعوبة التي بلغها المستوى، لا رقم المستوى وحده — فالمستوى
+    // صار يرفع الصعوبة فعلاً بدل أن يكون رقماً يزيد وشارةً تومض.
+    if (elements.levelBadge) {
+        const diff = DIFFICULTY_LABELS[activeDifficulty()] || '';
+        elements.levelBadge.textContent = `المستوى ${gameState.level} · ${diff}`;
+    }
 
     if (elements.hintCount) elements.hintCount.textContent = gameState.hintsRemaining;
     if (elements.hintBtn) {
