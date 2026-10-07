@@ -5,7 +5,8 @@ import {
     saveHighScore, saveBestStreak, difficultyForLevel, activeDifficulty,
     getDailyStreak, recordDailyCompletion, loadDailyState, clearDailyState,
     setCurrentDailyDate, markDailyStarted, isDailyCompletedToday,
-    SAVE_VERSION, HINTS_PER_ROUND, FREE_SKIPS_PER_ROUND, LEVELS_PER_STEP
+    SAVE_VERSION, HINTS_PER_ROUND, FREE_SKIPS_PER_ROUND, LEVELS_PER_STEP,
+    MAX_STEPS_ABOVE_CHOICE, getCurrentDailyDate
 } from '../js/state.js';
 import { getItem, setItem, removeItem } from '../js/storage.js';
 
@@ -164,12 +165,19 @@ describe('الأرقام القياسية', () => {
 });
 
 describe('تصعيد الصعوبة مع المستوى', () => {
-    test('كل مستوى يرفع درجة', () => {
+    test('كل مستوى يرفع درجة حتى السقف', () => {
         assert.equal(LEVELS_PER_STEP, 1);
         assert.equal(difficultyForLevel('easy', 1), 'easy');
         assert.equal(difficultyForLevel('easy', 2), 'medium');
-        assert.equal(difficultyForLevel('easy', 3), 'hard');
         assert.equal(difficultyForLevel('medium', 2), 'hard');
+    });
+
+    test('درجة واحدة فوق اختيار اللاعب لا أكثر', () => {
+        // بلا سقف كان «سهل» يصير «صعب» بعد عشر إجابات بمؤقت 20 ثانية
+        assert.equal(MAX_STEPS_ABOVE_CHOICE, 1);
+        assert.equal(difficultyForLevel('easy', 3), 'medium');
+        assert.equal(difficultyForLevel('easy', 99), 'medium');
+        assert.equal(difficultyForLevel('medium', 99), 'hard');
     });
 
     test('التصعيد يقع داخل جولة واقعية لا بعدها', () => {
@@ -181,7 +189,6 @@ describe('تصعيد الصعوبة مع المستوى', () => {
     });
 
     test('لا تتجاوز «صعب» مهما علا المستوى', () => {
-        assert.equal(difficultyForLevel('easy', 99), 'hard');
         assert.equal(difficultyForLevel('hard', 1), 'hard');
         assert.equal(difficultyForLevel('hard', 50), 'hard');
     });
@@ -262,6 +269,26 @@ describe('حالة التحدي اليومي', () => {
         markDailyStarted('2026-08-17');
         assert.equal(isDailyCompletedToday('2026-08-17'), true);
         assert.equal(isDailyCompletedToday('2026-08-18'), false);
+    });
+
+    test('علامات تالفة تُرفض، والسليمة تُستعاد كما هي', () => {
+        setCurrentDailyDate('2026-08-17');
+        resetGameState({ mode: 'daily', dailyIndex: 3, dailyMarks: ['correct', 'hint', 'skip'] });
+        saveSession();
+        assert.deepEqual(loadDailyState('2026-08-17').dailyMarks, ['correct', 'hint', 'skip']);
+
+        resetGameState({ mode: 'daily', dailyIndex: 1, dailyMarks: ['correct', 'wrong'] });
+        saveSession();
+        assert.equal(loadDailyState('2026-08-17'), null, 'علامات أكثر من الأسئلة المعروضة');
+
+        resetGameState({ mode: 'daily', dailyIndex: 2, dailyMarks: ['correct', '<b>'] });
+        saveSession();
+        assert.equal(loadDailyState('2026-08-17'), null, 'علامة غير معروفة');
+    });
+
+    test('تاريخ التحدي الجاري محفوظ للسلسلة والمشاركة', () => {
+        setCurrentDailyDate('2026-08-17');
+        assert.equal(getCurrentDailyDate(), '2026-08-17');
     });
 
     test('clearDailyState يمحوها', () => {

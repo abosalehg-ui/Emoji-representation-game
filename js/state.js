@@ -23,6 +23,12 @@ export const FREE_SKIPS_PER_ROUND = 2;
 const DIFFICULTIES = ['easy', 'medium', 'hard'];
 const MODES = ['classic', 'daily'];
 
+/** أسماء الصعوبات للعرض — مصدر واحد بدل ثلاث نسخ في game و main و ui. */
+export const DIFFICULTY_LABELS = { easy: 'سهل', medium: 'متوسط', hard: 'صعب' };
+
+/** علامات أسئلة التحدي اليومي — تُبنى منها شبكة المشاركة وتُحفظ مع الجلسة. */
+export const DAILY_MARK_KINDS = ['correct', 'hint', 'wrong', 'skip'];
+
 /**
  * كم مستوى يلزم لصعود درجة صعوبة واحدة.
  *
@@ -41,15 +47,20 @@ export const CORRECT_PER_LEVEL = 5;
  * كان «المستوى» رقماً يزيد وشارةً تومض وحسب: لا يغيّر الصعوبة ولا وقت المؤقت
  * ولا يفتح شيئاً — فمنحنى الصعوبة داخل الجولة مسطّح تماماً، واللغز الأربعون
  * بصعوبة الأول، و«أعلى مستوى» في شاشة النهاية ليس إلا عدد الإجابات مقسوماً
- * على خمسة. الآن يصعد اختيار اللاعب درجةً كل مستويين بحد أقصى «صعب».
+ * على خمسة. الآن يصعد اختيار اللاعب درجةً كل LEVELS_PER_STEP مستوى.
  *
- * من بدأ على «صعب» يبقى عليه — لا شيء فوقه، ولا نُنزله عمّا اختاره.
+ * لكن بسقف: درجة واحدة فوق اختيار اللاعب لا أكثر. بلا سقف كان «سهل» يصير
+ * «صعب» بعد عشر إجابات بمؤقت 20 ثانية — فيفقد اختيار المبتدئ معناه، وهو
+ * غالباً صغير السن أو جديد على الأمثال. من بدأ على «صعب» يبقى عليه.
  */
+export const MAX_STEPS_ABOVE_CHOICE = 1;
+
 export function difficultyForLevel(base, level) {
     const start = DIFFICULTIES.indexOf(base);
     if (start < 0) return base;
     const steps = Math.floor((Math.max(1, level) - 1) / LEVELS_PER_STEP);
-    return DIFFICULTIES[Math.min(start + steps, DIFFICULTIES.length - 1)];
+    const cap = Math.min(start + MAX_STEPS_ABOVE_CHOICE, DIFFICULTIES.length - 1);
+    return DIFFICULTIES[Math.min(start + steps, cap)];
 }
 
 /** الصعوبة المعروضة الآن — للمجموعة وللمؤقت وللنقاط. التحدي اليومي ثابت. */
@@ -117,6 +128,9 @@ export function saveSession() {
         timerEnabled: gameState.timerEnabled,
         mode: gameState.mode,
         dailyIndex: gameState.dailyIndex,
+        // بدونها كانت شبكة المشاركة بعد الاستئناف تقرأ «10/10» بستة مربعات:
+        // العلامات تُبنى في الذاكرة فقط، والاستئناف يبدأها من الصفر
+        dailyMarks: Array.isArray(gameState.dailyMarks) ? [...gameState.dailyMarks] : [],
         savedAt: Date.now()
     };
 
@@ -159,7 +173,16 @@ function isValidSession(s) {
         // كان dailyIndex الحقل الوحيد الذي يمر بلا فحص بين جيرانه كلها،
         // فيُمرَّر خاماً إلى resumeDaily
         && Number.isInteger(s.dailyIndex) && s.dailyIndex >= 0 && s.dailyIndex <= 100
+        // اختياري: ملفات الحفظ الأقدم بلا علامات تبقى صالحة بدل أن يُمسح
+        // تحدي يومٍ جارٍ عند التحديث
+        && (s.dailyMarks === undefined || isValidMarks(s.dailyMarks, s.dailyIndex))
         && Number.isFinite(s.savedAt);
+}
+
+function isValidMarks(marks, dailyIndex) {
+    return Array.isArray(marks)
+        && marks.length <= dailyIndex
+        && marks.every(m => DAILY_MARK_KINDS.includes(m));
 }
 
 /** الجلسات الأقدم من أسبوع لا تُعرض — استئنافها بعد أيام بلا معنى. */
@@ -266,6 +289,14 @@ export function clearDailyState() {
 
 export function setCurrentDailyDate(dateKey) {
     currentDailyDate = dateKey;
+}
+
+/**
+ * تاريخ التحدي الجاري — لا تاريخ اللحظة. من بدأ تحدي الثلاثاء قبل منتصف
+ * الليل وأنهاه بعده يُحسب له الثلاثاء، لا الأربعاء.
+ */
+export function getCurrentDailyDate() {
+    return currentDailyDate;
 }
 
 /* ------------------------------------------------------------------ */

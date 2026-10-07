@@ -1,4 +1,6 @@
-import { gameState, setTheme, getTheme, HINTS_PER_ROUND, activeDifficulty } from './state.js';
+import {
+    gameState, setTheme, getTheme, HINTS_PER_ROUND, activeDifficulty, DIFFICULTY_LABELS
+} from './state.js';
 import { iconMarkup, setIcon } from './icons.js';
 import { stopConfetti } from './confetti.js';
 
@@ -66,13 +68,20 @@ export function showPuzzleLoading() {
 /* الرسائل                                                             */
 /* ------------------------------------------------------------------ */
 
+const TOAST_MS = 2600;
+
 let toastTimeout;
 export function showToast(message) {
     if (!elements.toast) return;
     elements.toast.textContent = message;
     elements.toast.classList.add('show');
     clearTimeout(toastTimeout);
-    toastTimeout = setTimeout(() => elements.toast.classList.remove('show'), 2600);
+    toastTimeout = setTimeout(hideToast, TOAST_MS);
+}
+
+export function hideToast() {
+    clearTimeout(toastTimeout);
+    elements.toast?.classList.remove('show');
 }
 
 /**
@@ -109,13 +118,14 @@ export function setInputLocked(locked) {
     if (elements.submitBtn) elements.submitBtn.disabled = locked;
     if (elements.skipBtn)   elements.skipBtn.disabled   = locked;
     if (elements.hintBtn)   elements.hintBtn.disabled   = locked || gameState.hintsRemaining <= 0;
+    // الخروج متاح أثناء نوافذ التغذية الراجعة العادية، ومعطّل فقط حين تكون
+    // الجولة قد انتهت فعلاً وشاشة النهاية في الطريق
+    if (elements.exitRoundBtn) elements.exitRoundBtn.disabled = locked && gameState.lives <= 0;
 }
 
 /* ------------------------------------------------------------------ */
 /* تحديث الواجهة                                                       */
 /* ------------------------------------------------------------------ */
-
-const DIFFICULTY_LABELS = { easy: 'سهل', medium: 'متوسط', hard: 'صعب' };
 
 export function updateUI() {
     if (elements.scoreDisplay) elements.scoreDisplay.textContent = gameState.score;

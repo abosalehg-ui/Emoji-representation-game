@@ -1,4 +1,4 @@
-const CACHE_NAME = 'image-challenge-v4';
+const CACHE_NAME = 'image-challenge-v5';
 
 /**
  * كل ما تحتاجه اللعبة للعمل أوفلاين.
@@ -43,8 +43,7 @@ const CORE_ASSETS = [
     // كانت الثمانية كلها هنا — 338 كيلوبايت تُجلب أثناء تثبيت الـService Worker
     // مع أول زيارة، فتُبطل التحميل الكسول في sounds.js تماماً: اللاعب يدفع ثمن
     // كل الأصوات قبل أن يرى لغزاً واحداً، من الطرف الآخر. البقية يخزّنها
-    // handleAsset تلقائياً عند أول جلب لها (تسخين الخمول في sounds.js)، فيبقى
-    // العمل أوفلاين سليماً بعد ثوانٍ من أول زيارة.
+    // handleRange عند أول طلب لها (warmSounds في sounds.js عند بدء الجولة).
     './assets/sounds/click.mp3',
     './assets/sounds/correct.mp3',
     './assets/icons/icon-192.svg',
@@ -110,6 +109,65 @@ async function handleNavigation(request) {
     }
 }
 
+/**
+ * يقتطع رد 206 من نسخة كاملة.
+ *
+ * Safari لا يشغّل <audio> من رد 200 كامل على طلب Range، فلا يكفي أن نقدّم
+ * النسخة المخزّنة كما هي.
+ */
+async function sliceRange(request, full) {
+    const buf = await full.arrayBuffer();
+    const size = buf.byteLength;
+    const type = full.headers.get('Content-Type') || 'application/octet-stream';
+    const m = /^bytes=(\d*)-(\d*)$/.exec(request.headers.get('Range') || '');
+
+    let start = 0;
+    let end = size - 1;
+    if (m && m[1] !== '') {
+        start = Number(m[1]);
+        if (m[2] !== '') end = Math.min(Number(m[2]), size - 1);
+    } else if (m && m[2] !== '') {
+        start = Math.max(0, size - Number(m[2]));   // bytes=-N: آخر N بايت
+    }
+    if (!m || start > end || start >= size) {
+        return new Response(null, { status: 416, headers: { 'Content-Range': `bytes */${size}` } });
+    }
+
+    return new Response(buf.slice(start, end + 1), {
+        status: 206,
+        headers: {
+            'Content-Type': type,
+            'Content-Length': String(end - start + 1),
+            'Content-Range': `bytes ${start}-${end}/${size}`,
+            'Accept-Ranges': 'bytes'
+        }
+    });
+}
+
+/**
+ * طلبات Range — يرسلها <audio> و<video> دائماً تقريباً.
+ *
+ * كانت تمر عبر handleAsset، فيرد الخادم بـ206 و response.ok صحيحة، ثم يرفض
+ * Cache.put كل رد 206 بلا استثناء — و .catch يبتلع الرفض. النتيجة: ستة أصوات
+ * من ثمانية لم تدخل المخزن قط، والأوفلاين يتكئ على ذاكرة HTTP التي يمسحها
+ * المتصفح متى شاء. هنا نجلب النسخة الكاملة مرة واحدة (بلا Range)، نخزّنها،
+ * ونقتطع منها ما طُلب — الآن ومن المخزن في كل مرة لاحقة.
+ */
+async function handleRange(request) {
+    const cached = await caches.match(request.url);
+    if (cached) return sliceRange(request, cached);
+
+    try {
+        const full = await fetch(request.url, { credentials: 'same-origin' });
+        if (full.status !== 200) return full;
+        const cache = await caches.open(CACHE_NAME);
+        await cache.put(request.url, full.clone()).catch(() => {});
+        return sliceRange(request, full);
+    } catch {
+        return Response.error();
+    }
+}
+
 /** بقية الأصول: المخزن أولاً — كلها ثابتة ومُصدّرة مع اسم المخزن. */
 async function handleAsset(request) {
     const cached = await caches.match(request);
@@ -138,6 +196,10 @@ self.addEventListener('fetch', (event) => {
 
     if (request.mode === 'navigate') {
         event.respondWith(handleNavigation(request));
+        return;
+    }
+    if (request.headers.has('Range')) {
+        event.respondWith(handleRange(request));
         return;
     }
     event.respondWith(handleAsset(request));

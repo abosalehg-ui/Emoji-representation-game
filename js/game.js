@@ -1,15 +1,16 @@
 import {
     gameState, resetGameState, saveSession, clearSession, saveHighScore, saveBestStreak,
     markDailyStarted, loadDailyState, clearDailyState, setCurrentDailyDate,
-    HINTS_PER_ROUND, FREE_SKIPS_PER_ROUND, CORRECT_PER_LEVEL,
-    activeDifficulty, difficultyForLevel, recordDailyCompletion, getDailyStreak
+    HINTS_PER_ROUND, FREE_SKIPS_PER_ROUND, CORRECT_PER_LEVEL, DIFFICULTY_LABELS,
+    activeDifficulty, difficultyForLevel, recordDailyCompletion, getDailyStreak,
+    getCurrentDailyDate
 } from './state.js';
 import { questionsDB, filterByCategory } from './questions.js';
 import { getDailyQuestions, todayKey, previousKey } from './daily.js';
 import { checkAnswer } from './arabic.js';
 import { playSound, warmSounds } from './sounds.js';
 import {
-    elements, showScreen, showToast, revealAnswer, hideReveal, updateUI,
+    elements, showScreen, showToast, hideToast, revealAnswer, hideReveal, updateUI,
     flashCorrect, flashWrong, clearAnswerStyles, setInputLocked, renderPuzzle
 } from './ui.js';
 import { startTimer, stopTimer, hideTimer, elapsedSeconds } from './timer.js';
@@ -22,8 +23,6 @@ const HINT_PENALTY = 3;
 const MIN_POINTS = 5;
 const SPEED_BONUS = 5;
 const SPEED_BONUS_WINDOW = 10;
-
-const DIFFICULTY_LABELS = { easy: 'سهل', medium: 'متوسط', hard: 'صعب' };
 
 /** كل تأخيرات اللعبة بالمللي ثانية في مكان واحد بدل أرقام مبعثرة. */
 const TIMINGS = {
@@ -117,6 +116,9 @@ export function loadQuestion() {
     }
 
     hideReveal();
+    // التوست يبقى 2.6 ثانية والسؤال التالي يأتي بعد 0.9 — فكان «+60 نقطة»
+    // يطفو فوق كشف إجابة خاطئة للسؤال الذي يليه
+    hideToast();
     clearAnswerStyles();
     if (elements.answerInput) elements.answerInput.value = '';
     gameState.hintsUsedOnCurrent = 0;
@@ -209,6 +211,7 @@ export function resumeDaily() {
         difficulty: 'medium',
         dailyQuestions: getDailyQuestions(10),
         dailyIndex: saved.dailyIndex,
+        dailyMarks: Array.isArray(saved.dailyMarks) ? [...saved.dailyMarks] : [],
         timerEnabled: false,
         score: saved.score,
         lives: saved.lives,
@@ -357,20 +360,24 @@ function onCorrect(question) {
     }, TIMINGS.afterCorrect);
 }
 
-function onWrong(question) {
-    playSound('wrong');
-    flashWrong();
-    markDaily('wrong');
-    gameState.streak = 0;
-    gameState.lives--;
+/**
+ * ما بعد خسارة سؤال — خطأ أو انتهاء وقت أو تخطٍّ.
+ *
+ * كان هذا المنطق منسوخاً ثلاث مرات (onWrong و handleTimeout و skipQuestion)،
+ * فأي خلل فيه — مثل نافذة الخروج بعد آخر حياة — يُصلَح في ثلاثة أماكن أو لا يُصلَح.
+ */
+function afterLoss(label, answer, delay) {
     updateUI();
 
     if (gameState.lives <= 0) {
+        // الخروج معطّل الآن (setInputLocked يقرأ lives)، و abandonRound ينهي
+        // اللعبة بدل إلغائها لو وصل Escape قبل هذا المؤقت
+        setInputLocked(true);
         later(endGame, TIMINGS.beforeGameOver);
         return;
     }
 
-    revealAnswer('الإجابة الصحيحة', question.answer);
+    revealAnswer(label, answer);
     saveSession();
 
     later(() => {
@@ -378,7 +385,20 @@ function onWrong(question) {
         if (elements.answerInput) elements.answerInput.value = '';
         unlock();
         loadQuestion();
-    }, TIMINGS.afterWrong);
+    }, delay);
+}
+
+function loseLife(mark) {
+    playSound('wrong');
+    flashWrong();
+    markDaily(mark);
+    gameState.streak = 0;
+    gameState.lives--;
+}
+
+function onWrong(question) {
+    loseLife('wrong');
+    afterLoss('الإجابة الصحيحة', question.answer, TIMINGS.afterWrong);
 }
 
 export function handleTimeout() {
@@ -386,26 +406,8 @@ export function handleTimeout() {
 
     submitting = true;
     setInputLocked(true);
-    playSound('wrong');
-    flashWrong();
-    markDaily('wrong');
-    gameState.streak = 0;
-    gameState.lives--;
-    updateUI();
-
-    if (gameState.lives <= 0) {
-        later(endGame, TIMINGS.beforeGameOver);
-        return;
-    }
-
-    revealAnswer('انتهى الوقت! الإجابة', gameState.currentQuestion.answer);
-    saveSession();
-
-    later(() => {
-        clearAnswerStyles();
-        unlock();
-        loadQuestion();
-    }, TIMINGS.afterWrong);
+    loseLife('wrong');
+    afterLoss('انتهى الوقت! الإجابة', gameState.currentQuestion.answer, TIMINGS.afterWrong);
 }
 
 /* ------------------------------------------------------------------ */
@@ -454,21 +456,9 @@ export function skipQuestion() {
     } else {
         gameState.lives--;
     }
-    updateUI();
 
-    if (gameState.lives <= 0) {
-        later(endGame, TIMINGS.beforeGameOver);
-        return;
-    }
-
-    revealAnswer(wasFree ? 'تخطيت! الإجابة' : 'تخطي بخسارة حياة! الإجابة',
-                 gameState.currentQuestion.answer);
-    saveSession();
-
-    later(() => {
-        unlock();
-        loadQuestion();
-    }, TIMINGS.afterSkip);
+    afterLoss(wasFree ? 'تخطيت! الإجابة' : 'تخطي بخسارة حياة! الإجابة',
+              gameState.currentQuestion.answer, TIMINGS.afterSkip);
 }
 
 /* ------------------------------------------------------------------ */
@@ -487,8 +477,8 @@ export function endGame() {
     if (gameState.mode === 'daily') {
         clearDailyState();
         // السلسلة تُسجَّل عند الإكمال لا عند البدء: من فتح التحدي ولم يُنهه
-        // لا يستحق يوماً في سلسلته.
-        const key = todayKey();
+        // لا يستحق يوماً في سلسلته. وبتاريخ التحدي لا تاريخ الانتهاء.
+        const key = dailyDateKey();
         dailyStreak = recordDailyCompletion(key, previousKey(key));
     }
 
@@ -536,14 +526,29 @@ export function endGame() {
     showScreen('gameoverScreen');
 }
 
+/** تاريخ التحدي الجاري، أو اليوم إن لم يُسجَّل (احتياط). */
+function dailyDateKey() {
+    return getCurrentDailyDate() || todayKey();
+}
+
 /**
  * يترك الجولة الجارية دون إنهائها.
  *
  * لم يكن في شاشة اللعب أي مخرج: ثلاثة أزرار (تلميح، إرسال، تخطي) و Escape
  * لا يعمل فيها — فمن اختار الصعب بالغلط يتحمّل ثلاث خسارات أو يعيد تحميل
  * الصفحة. الجلسة تُحفظ هنا فيظهر شريط الاستكمال في الشاشة الأولى.
+ *
+ * @returns {boolean} true إن تُركت الجولة، false إن انتهت بدلاً من ذلك.
  */
 export function abandonRound() {
+    // الأرواح نفدت و endGame مجدول بعد 700ms. كان الخروج في هذي النافذة يلغيه
+    // ويحفظ جلسة بـ lives: 0 يرفضها التحميل — فلا شاشة نهاية ولا رقم قياسي،
+    // وفي التحدي اليومي تنكسر السلسلة بصمت. الجولة انتهت؛ ننهيها.
+    if (gameState.lives <= 0) {
+        endGame();
+        return false;
+    }
+
     cancelPending();
     stopTimer();
     hideTimer();
@@ -552,6 +557,7 @@ export function abandonRound() {
     setInputLocked(false);
     if (elements.answerInput) elements.answerInput.value = '';
     saveSession();
+    return true;
 }
 
 /** إعدادات آخر جولة — يستخدمها زر «العب مرة أخرى» ليبدأ فوراً. */
@@ -577,7 +583,7 @@ export function buildShareText() {
         const total = gameState.dailyQuestions?.length || marks.length;
         const streak = getDailyStreak();
         const lines = [
-            `تحدي الصور · ${todayKey()}`,
+            `تحدي الصور · ${dailyDateKey()}`,
             `${gameState.correctAnswers}/${total}`,
             marks.join('')
         ];
