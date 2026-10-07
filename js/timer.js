@@ -8,6 +8,8 @@ let remaining = 0;
 let active = false;
 let barEl = null;
 let fillEl = null;
+/** آخر قيمة أُعلنت لقارئ الشاشة — نحدّثها كل ثانية لا كل إطار. */
+let announced = -1;
 
 export function initTimer({ bar, fill, onExpire }) {
     barEl = bar;
@@ -30,7 +32,12 @@ export function startTimer(difficulty) {
     remaining = total;
     startedAt = performance.now();
     active = true;
-    if (barEl) barEl.classList.add('active');
+    announced = -1;
+    if (barEl) {
+        barEl.classList.add('active');
+        barEl.setAttribute('aria-valuemin', '0');
+        barEl.setAttribute('aria-valuemax', String(total));
+    }
     paint();
 
     const tick = () => {
@@ -75,5 +82,14 @@ function paint() {
     if (!fillEl) return;
     const pct = Math.max(0, Math.min(100, (remaining / total) * 100));
     fillEl.style.width = `${pct}%`;
-    if (barEl) barEl.classList.toggle('low', remaining <= 5);
+    if (!barEl) return;
+    barEl.classList.toggle('low', remaining <= 5);
+
+    // role="progressbar" بلا قيمة يُعلَن شريطاً فارغ المعنى
+    const secs = Math.ceil(remaining);
+    if (secs !== announced) {
+        announced = secs;
+        barEl.setAttribute('aria-valuenow', String(secs));
+        barEl.setAttribute('aria-valuetext', `${secs} ثانية متبقية`);
+    }
 }

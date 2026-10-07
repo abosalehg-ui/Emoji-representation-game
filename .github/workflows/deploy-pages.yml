@@ -11,16 +11,15 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: pages
-  cancel-in-progress: false
-
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # التاريخ كاملاً: فحص CACHE_NAME يقارن بالأساس
+          fetch-depth: 0
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -37,12 +36,23 @@ jobs:
             exit 1
           fi
 
+      # يمنع خلط index.html جديد مع JS قديم من مخزن الـService Worker
+      - name: Verify CACHE_NAME was bumped
+        env:
+          BASE: ${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || github.event.before }}
+        run: node tools/check-cache-version.js "$BASE"
+
       - name: Run tests
         run: npm test
 
   deploy:
     needs: test
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    # الطابور للنشر وحده: على مستوى الملف كانت تشغيلات اختبار الـPR تنتظر
+    # خلف النشر وتسبقه بلا داعٍ
+    concurrency:
+      group: pages
+      cancel-in-progress: false
     permissions:
       contents: read
       pages: write

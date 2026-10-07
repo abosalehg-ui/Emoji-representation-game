@@ -58,10 +58,10 @@ describe('احتساب النقاط', () => {
     });
 
     test('النقاط تتبع الصعوبة المتصاعدة لا المختارة', () => {
-        // مستوى 3 من «سهل» يصل إلى «صعب»، فيجب أن تعطي نقاط الصعب
-        resetGameState({ difficulty: 'easy', level: 3 });
-        assert.equal(activeDifficulty(), 'hard');
-        assert.equal(awardPoints(), 30);
+        // مستوى 2 من «سهل» يصل إلى «متوسط»، فيجب أن تعطي نقاط المتوسط
+        resetGameState({ difficulty: 'easy', level: 2 });
+        assert.equal(activeDifficulty(), 'medium');
+        assert.equal(awardPoints(), 20);
     });
 
     test('لا مكافأة سرعة والمؤقت مطفأ', () => {

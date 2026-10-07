@@ -757,11 +757,12 @@ svg.journal-icon {
 /* ================= بطاقة السؤال ================= */
 
 /**
- * البطاقة تملأ ما بقي من الشاشة، لكن محتواها يتوسّطها بدل أن يتمدد فيها.
+ * البطاقة بحجم محتواها، لا بحجم ما بقي من الشاشة.
  *
- * كان flex: 1 متراكماً على البطاقة وعلى حاوية الأيقونات معاً، فتصير الحاوية
- * 481 بكسل تسبح فيها ثلاث أيقونات من 59 بكسل — أي 88% فراغ حول الشيء الوحيد
- * الذي جاء اللاعب لينظر إليه.
+ * كان flex: 1 عليها، فتصير 502 بكسل على 390×844 ومحتواها 132 — ثلاثة أرباعها
+ * فراغ، والأسوأ أنها تدفع حقل الإجابة إلى قاع الشاشة: 370 بكسل بين الأيقونات
+ * والحقل، فإذا فُتحت لوحة المفاتيح لم يبقَ اللغز والحقل معاً في المشهد.
+ * الآن الحقل تحت البطاقة مباشرة، والفراغ أسفل الشاشة حيث تصعد لوحة المفاتيح.
  */
 .question-card {
     background: var(--card-bg);
@@ -769,7 +770,8 @@ svg.journal-icon {
     padding: 24px 20px;
     box-shadow: var(--shadow-lg);
     margin-bottom: 14px;
-    flex: 1;
+    flex: 0 1 auto;
+    min-height: 240px;
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -1283,8 +1285,10 @@ svg.journal-icon {
 
 /* ================= أزرار الزاوية ================= */
 
+/* absolute لا fixed: كانت تبقى ثابتة فوق المحتوى حين تطول الصفحة عن الشاشة
+   (320×568 مع كشف الإجابة) فتغطّي القلوب وأعلى البطاقة. الآن تُمرَّر معها. */
 .top-toggles {
-    position: fixed;
+    position: absolute;
     top: var(--toggles-top);
     /* خاصية منطقية: تتبع اتجاه المستند تلقائياً */
     inset-inline-start: 16px;
@@ -1372,7 +1376,7 @@ svg.journal-icon {
     .play-btn svg { width: 30px; height: 30px; }
     .emoji-display { min-height: 80px; padding: 10px 0; }
     .puzzle-icon { width: clamp(36px, 8vh, 52px); height: clamp(36px, 8vh, 52px); }
-    .question-card { padding: 14px; }
+    .question-card { padding: 14px; min-height: 0; }
     .gameover-content { padding: 8px 0; }
     .gameover-emoji { display: none; }
 }

@@ -1,7 +1,7 @@
 import { CATEGORIES, countFor, isCategoryPlayable, MIN_POOL, totalQuestions } from './questions.js';
 import {
     gameState, loadSession, clearSession, restoreSession,
-    isDailyCompletedToday, loadDailyState, hasSeenIntro, getDailyStreak
+    isDailyCompletedToday, loadDailyState, hasSeenIntro, getDailyStreak, DIFFICULTY_LABELS
 } from './state.js';
 import { isPersistent } from './storage.js';
 import { todayKey, previousKey } from './daily.js';
@@ -18,8 +18,6 @@ import {
 } from './game.js';
 import { journalEntries, solvedCount } from './journal.js';
 import { showIntro, submitIntro, skipIntro } from './tutorial.js';
-
-const DIFFICULTY_LABELS = { easy: 'سهل', medium: 'متوسط', hard: 'صعب' };
 
 /** أقصى ما نؤخّر به الإقلاع انتظاراً للـsprite قبل المضيّ بالأيقونات البديلة. */
 const BOOT_SPRITE_WAIT_MS = 1200;
@@ -368,7 +366,8 @@ function goToStart() {
 
 /** يترك الجولة الجارية ويعود للقائمة — التقدّم محفوظ ويظهر في شريط الاستكمال. */
 function leaveRound() {
-    abandonRound();
+    // false = الأرواح كانت قد نفدت فانتهت الجولة وظهرت شاشة النهاية
+    if (!abandonRound()) return;
     goToStart();
     showToast('حُفظ تقدّمك — تقدر تكمل من الشاشة الأولى');
 }

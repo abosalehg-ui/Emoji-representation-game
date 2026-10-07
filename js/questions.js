@@ -57,7 +57,10 @@ export const questionsDB = {
         { icons: ["anatomical-heart", "hand", "scales"], answer: "إنما الأعمال بالنيات", hints: ["الميزان في الباطن لا الظاهر", "قيمة العمل بما أضمره صاحبه", "حديث نبوي"], category: "religion", source: "hadith" },
         { icons: ["hijab-woman", "arrow-down", "sparkles"], answer: "الجنة تحت أقدام الأمهات", hints: ["في بر الوالدين", "أعظم منزلة لامرأة", "الطريق إلى النعيم يمر بها"], category: "religion", source: "saying" },
         { icons: ["smile", "handshake", "sparkles"], answer: "تبسمك في وجه أخيك صدقة", hints: ["أيسر أنواع العطاء", "لا يكلفك شيئاً ويُكتب لك", "حديث نبوي"], category: "religion", source: "hadith" },
-        { icons: ["speaking-head", "heart", "crescent-star"], answer: "الدين النصيحة", hints: ["جوهره في الإخلاص للآخرين", "كلمتان تختصران المعاملة", "حديث نبوي قصير"], category: "religion", source: "hadith" }
+        { icons: ["speaking-head", "heart", "crescent-star"], answer: "الدين النصيحة", hints: ["جوهره في الإخلاص للآخرين", "كلمتان تختصران المعاملة", "حديث نبوي قصير"], category: "religion", source: "hadith" },
+        { icons: ["bandage", "pill", "dizzy", "x-mark", "doctor"], answer: "لكل داء دواء يستطب به إلا الحماقة أعيت من يداويها", hints: ["عن علة واحدة بلا علاج", "الطبيب يعجز أمامها", "بيت للمتنبي"], category: "poetry" },
+        { icons: ["crescent-star", "handshake", "hourglass"], answer: "إن الله مع الصابرين", hints: ["بشارة لأهل التحمّل", "جزاء من يحبس نفسه عند الشدة", "آية قرآنية"], category: "religion", source: "quran" },
+        { icons: ["speaking-head", "rose", "sparkles"], answer: "الكلمة الطيبة صدقة", hints: ["أيسر العطاء ما يخرج من لسانك", "لا يكلفك مالاً ويُكتب لك", "حديث نبوي"], category: "religion", source: "hadith" }
     ],
     medium: [
         { icons: ["elephant", "brain"], answer: "ذاكرة الفيل", hints: ["عن قوة الذاكرة", "لا ينسى أبداً", "حيوان لا ينسى"], category: "proverbs" },
@@ -111,7 +114,10 @@ export const questionsDB = {
         { icons: ["open-hands", "arrow-up", "hand", "arrow-down"], answer: "اليد العليا خير من اليد السفلى", hints: ["مقارنة بين المعطي والآخذ", "العطاء أشرف من السؤال", "حديث نبوي"], category: "religion", source: "hadith" },
         { icons: ["open-hands", "open-book", "sparkles"], answer: "وقل رب زدني علما", hints: ["دعاء بالاستزادة", "الطلب الوحيد الذي أُمر بالمزيد منه", "آية قرآنية"], category: "religion", source: "quran" },
         { icons: ["mouth", "hand", "shield"], answer: "المسلم من سلم المسلمون من لسانه ويده", hints: ["تعريف بالسلامة لا بالعبادة", "عضوان يُؤذى بهما الناس", "حديث نبوي"], category: "religion", source: "hadith" },
-        { icons: ["mountain", "arrow-down", "sunrise"], answer: "إن مع العسر يسرا", hints: ["وعد بانفراج الشدة", "الضيق مقرون بالفرج", "آية قرآنية"], category: "religion", source: "quran" }
+        { icons: ["mountain", "arrow-down", "sunrise"], answer: "إن مع العسر يسرا", hints: ["وعد بانفراج الشدة", "الضيق مقرون بالفرج", "آية قرآنية"], category: "religion", source: "quran" },
+        { icons: ["crown", "horse-running", "handshake", "open-book"], answer: "أعز مكان في الدنى سرج سابح وخير جليس في الزمان كتاب", hints: ["في الفروسية والقراءة", "الصاحب الذي لا يُملّ", "بيت للمتنبي"], category: "poetry" },
+        { icons: ["brain", "gold-medal", "lion"], answer: "الرأي قبل شجاعة الشجعان", hints: ["التفكير يسبق الإقدام", "العقل مقدَّم على القوة", "صدر بيت للمتنبي"], category: "poetry" },
+        { icons: ["x-mark", "bandage", "x-mark", "crossed-swords"], answer: "لا ضرر ولا ضرار", hints: ["قاعدة فقهية كبرى", "لا تؤذِ أحداً ولا تقابل الأذى بمثله", "حديث نبوي"], category: "religion", source: "hadith" }
     ],
     hard: [
         { icons: ["hammer", "arrow-down", "silhouette", "arrow-down"], answer: "من حفر حفرة لأخيه وقع فيها", hints: ["الكيد يرتد", "من يضر غيره يتضرر", "الظلم مرتد"], category: "wisdom" },
@@ -154,7 +160,11 @@ export const questionsDB = {
         { icons: ["running", "wind", "sweat"], answer: "اللي يسابق الريح يتعب حاله", hints: ["لا تتحدى المستحيل", "اعرف حدودك", "عن الواقعية"], category: "wisdom" },
         { icons: ["elderly", "crown", "bed"], answer: "الشيخ شيخ لو نام على حصير", hints: ["القيمة بالجوهر", "المكانة ليست بالمال", "عن الأصالة"], category: "wisdom" },
         { icons: ["crown", "x-mark", "plate"], answer: "اللي له عز ما يذل ولو جاع", hints: ["الكرامة لا تباع", "العزة فوق كل شيء", "عن الشرف"], category: "wisdom" },
-        { icons: ["cloud", "sunrise", "open-hands"], answer: "ولا تيأسوا من روح الله", hints: ["نهي عن القنوط", "من قصة يعقوب وأبنائه", "آية قرآنية"], category: "religion", source: "quran" }
+        { icons: ["cloud", "sunrise", "open-hands"], answer: "ولا تيأسوا من روح الله", hints: ["نهي عن القنوط", "من قصة يعقوب وأبنائه", "آية قرآنية"], category: "religion", source: "quran" },
+        { icons: ["eye", "lion", "tooth", "x-mark", "smile"], answer: "إذا رأيت نيوب الليث بارزة فلا تظنن أن الليث يبتسم", hints: ["لا تنخدع بالظاهر", "الكشر ليس ضحكاً", "بيت للمتنبي"], category: "poetry" },
+        { icons: ["eye", "relieved", "magnifier", "x-mark"], answer: "وعين الرضا عن كل عيب كليلة", hints: ["المحب لا يرى العيوب", "والساخط يراها كلها", "صدر بيت مشهور في الحكمة"], category: "poetry" },
+        { icons: ["water-drop", "seedling", "bird", "heart-red"], answer: "وجعلنا من الماء كل شيء حي", hints: ["أصل الحياة", "عنصر لا تقوم الكائنات بدونه", "آية قرآنية"], category: "religion", source: "quran" },
+        { icons: ["gold-medal", "quran", "brain", "speaking-head"], answer: "خيركم من تعلم القرآن وعلمه", hints: ["أفضل الناس منزلة", "من يأخذ ثم يعطي غيره", "حديث نبوي"], category: "religion", source: "hadith" }
     ]
 };
 
